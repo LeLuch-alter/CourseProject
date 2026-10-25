@@ -1,0 +1,1077 @@
+/*
+ * Kvit design system. Calm, neutral graphite in the dark theme and soft gray-white in the light theme;
+ * flat surfaces with thin borders, no glows. Based on DESIGN.md, toned down for an everyday tool.
+ * Every color is a token defined on .root; theme-light.css redefines the same tokens.
+ * Screens use only the tokens, never raw color values, so both themes stay consistent.
+ * The violet accent is used ONLY for primary submit buttons (sign in, save).
+ */
+
+/* ============================================================ Tokens: dark (default) */
+
+.root {
+    -canvas: #18181a;
+    -surface-deep: #222224;
+    -surface-mini: #26262a;
+    -surface-popup: #2a2a2e;
+    -text-strong: #f2f2f3;
+    -text: #dcdcde;
+    -text-muted: #b4b4b8;
+    -text-helper: #8e8e93;
+    -text-input: #f2f2f3;
+    -text-on-accent: #ffffff;
+    -display-gradient: #f2f2f3;
+    -meter-gradient: #c9c9cd;
+    -bar-fill: #8e8e96;
+    -bar-fill-hover: #d4d4d8;
+
+    -accent: #6a4ee0;
+    -accent-hover: #7a60e8;
+    -accent-pressed: #5a3fcc;
+
+    -danger: #e5735a;
+    -success: #4cb09a;
+    -info: #9fb4cc;
+    -neutral: #6e6e74;
+    -danger-wash: rgba(229, 115, 90, 0.13);
+    -danger-edge: rgba(229, 115, 90, 0.40);
+    -success-wash: rgba(76, 176, 154, 0.13);
+    -success-edge: rgba(76, 176, 154, 0.40);
+    -info-wash: rgba(159, 180, 204, 0.13);
+
+    -edge: rgba(255, 255, 255, 0.08);
+    -edge-strong: rgba(255, 255, 255, 0.16);
+    -edge-focus: rgba(255, 255, 255, 0.45);
+    -wash: rgba(255, 255, 255, 0.05);
+    -wash-hover: rgba(255, 255, 255, 0.09);
+    -wash-pressed: rgba(255, 255, 255, 0.14);
+    -glass-top: #202022;
+    -glass-bottom: #202022;
+    -highlight-edge: rgba(255, 255, 255, 0.06);
+    -inner-glow: transparent;
+    -halo: rgba(0, 0, 0, 0.35);
+    -input-bg: rgba(255, 255, 255, 0.04);
+    -input-bg-focus: rgba(255, 255, 255, 0.07);
+    -prompt: rgba(255, 255, 255, 0.35);
+    -track: rgba(255, 255, 255, 0.08);
+    -chip-bg: #26262a;
+    -topbar-bg: #1c1c1e;
+    -backdrop: rgba(0, 0, 0, 0.55);
+    -row-hover: rgba(255, 255, 255, 0.035);
+    -row-selected: rgba(255, 255, 255, 0.08);
+
+    /* Modena base, so built-in parts (scroll bars, popups) follow the theme */
+    -fx-base: #2a2a2e;
+    -fx-background: -canvas;
+    -fx-control-inner-background: #222224;
+    -fx-control-inner-background-alt: #222224;
+    -fx-accent: -accent;
+    -fx-focus-color: -edge-focus;
+    -fx-faint-focus-color: transparent;
+    -fx-text-base-color: -text;
+    -fx-text-background-color: -text;
+    -fx-selection-bar: -row-selected;
+    -fx-selection-bar-non-focused: -row-selected;
+    -fx-selection-bar-text: -text-strong;
+
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-background-color: -canvas;
+}
+
+/* ============================================================ Typography */
+
+.label {
+    -fx-text-fill: -text;
+}
+
+.display {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 48px;
+    -fx-text-fill: -display-gradient;
+}
+
+.heading {
+    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-size: 28px;
+    -fx-text-fill: -text-strong;
+}
+
+.heading-sm {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 17px;
+    -fx-text-fill: -text-strong;
+}
+
+.body-muted {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 15px;
+}
+
+.helper {
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 12px;
+}
+
+.field-label {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 13px;
+}
+
+/* Tracked all-caps marker; letter spacing is added in code (JavaFX CSS has none). */
+.eyebrow {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 11px;
+    -fx-text-fill: -text-helper;
+}
+
+.icon {
+    -fx-font-family: "Segoe Fluent Icons";
+    -fx-text-fill: -text;
+}
+
+.text-danger, .icon.text-danger, .stat-value.text-danger, .ledger-amount.text-danger {
+    -fx-text-fill: -danger;
+}
+
+.text-success, .icon.text-success, .ledger-amount.text-success, .stat-value.text-success {
+    -fx-text-fill: -success;
+}
+
+.brand-name {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 17px;
+    -fx-text-fill: -text-strong;
+}
+
+.brand-monogram {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: -text-on-accent;
+}
+
+/* ============================================================ Surfaces */
+
+.glass-panel {
+    -fx-background-color: linear-gradient(to bottom, -glass-top, -glass-bottom);
+    -fx-background-radius: 16;
+    -fx-border-color: -edge;
+    -fx-border-radius: 16;
+}
+
+/* Nearly opaque "deep glass": frost highlight on the top edge + inner glow + dark halo. */
+.modal-card {
+    -fx-background-color: -highlight-edge, -surface-deep, linear-gradient(to bottom, -inner-glow 0%, transparent 45%);
+    -fx-background-insets: 0, 1 0 0 0, 1 0 0 0;
+    -fx-background-radius: 16;
+    -fx-border-color: -edge;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, -halo, 28, 0, 0, 10);
+}
+
+.mini-card {
+    -fx-background-color: -highlight-edge, -surface-mini, linear-gradient(to bottom, -inner-glow 0%, transparent 60%);
+    -fx-background-insets: 0, 1 0 0 0, 1 0 0 0;
+    -fx-background-radius: 14;
+    -fx-border-color: -edge;
+    -fx-border-radius: 14;
+    -fx-effect: dropshadow(gaussian, -halo, 16, 0, 0, 6);
+}
+
+.icon-tile {
+    -fx-background-color: -wash;
+    -fx-background-radius: 999;
+    -fx-border-color: -edge;
+    -fx-border-radius: 999;
+    -fx-alignment: center;
+}
+
+.brand-mark {
+    -fx-background-color: -accent;
+    -fx-background-radius: 8;
+    -fx-alignment: center;
+}
+
+.badge {
+    -fx-background-color: -wash-hover;
+    -fx-background-radius: 6;
+    -fx-padding: 3 8 3 8;
+    -fx-font-size: 12px;
+    -fx-text-fill: -text;
+}
+
+.badge.danger {
+    -fx-background-color: -danger-wash;
+    -fx-text-fill: -danger;
+}
+
+.badge.success {
+    -fx-background-color: -success-wash;
+    -fx-text-fill: -success;
+}
+
+.badge.info {
+    -fx-background-color: -info-wash;
+    -fx-text-fill: -info;
+}
+
+.badge.muted {
+    -fx-background-color: -wash;
+    -fx-text-fill: -text-helper;
+}
+
+.chip {
+    -fx-background-color: -chip-bg;
+    -fx-background-radius: 999;
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 999;
+    -fx-padding: 6 12 6 10;
+}
+
+.skeleton {
+    -fx-background-color: -wash;
+    -fx-background-radius: 8;
+}
+
+.hairline {
+    -fx-background-color: -edge;
+    -fx-pref-height: 1px;
+    -fx-max-height: 1px;
+}
+
+.vertical-hairline {
+    -fx-background-color: -edge;
+    -fx-pref-width: 1px;
+    -fx-min-width: 1px;
+    -fx-max-width: 1px;
+}
+
+.status-dot {
+    -fx-fill: -neutral;
+}
+
+.status-dot.active {
+    -fx-fill: -info;
+}
+
+.status-dot.danger {
+    -fx-fill: -danger;
+}
+
+.status-dot.success {
+    -fx-fill: -success;
+}
+
+/* ============================================================ Buttons */
+
+.button, .toggle-button {
+    -fx-background-color: -wash;
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
+    -fx-border-color: -edge;
+    -fx-border-radius: 999;
+    -fx-text-fill: -text-strong;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 13px;
+    -fx-padding: 7 16 7 16;
+    -fx-cursor: hand;
+}
+
+.button:hover, .toggle-button:hover {
+    -fx-background-color: -wash-hover;
+}
+
+.button:pressed, .toggle-button:pressed {
+    -fx-background-color: -wash-pressed;
+}
+
+.button:focused, .toggle-button:focused {
+    -fx-border-color: -edge-focus;
+}
+
+.button:disabled, .toggle-button:disabled {
+    -fx-opacity: 0.45;
+}
+
+.button .icon, .toggle-button .icon {
+    -fx-text-fill: -text;
+}
+
+/* Violet: only for the main submit action of a form. */
+.button.cta {
+    -fx-background-color: -accent;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(255, 255, 255, 0.16);
+    -fx-border-radius: 6;
+    -fx-text-fill: -text-on-accent;
+    -fx-font-size: 14px;
+    -fx-padding: 11 24 11 24;
+}
+
+.button.cta .icon, .button.cta .progress-indicator {
+    -fx-text-fill: -text-on-accent;
+    -fx-progress-color: -text-on-accent;
+}
+
+.button.cta:hover {
+    -fx-background-color: -accent-hover;
+}
+
+.button.cta:pressed {
+    -fx-background-color: -accent-pressed;
+}
+
+.button.cta:focused {
+    -fx-border-color: rgba(255, 255, 255, 0.75);
+}
+
+.button.cta:disabled {
+    -fx-opacity: 0.7;
+}
+
+.button.quiet {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text-muted;
+}
+
+.button.quiet:hover {
+    -fx-background-color: -wash;
+    -fx-text-fill: -text-strong;
+}
+
+.button.quiet:focused {
+    -fx-border-color: -edge-focus;
+}
+
+.button.danger-button {
+    -fx-background-color: -danger-wash;
+    -fx-border-color: -danger-edge;
+    -fx-text-fill: -danger;
+}
+
+.button.danger-button .icon {
+    -fx-text-fill: -danger;
+}
+
+.button.danger-button:hover {
+    -fx-background-color: -danger-edge;
+}
+
+.button.icon-button {
+    -fx-padding: 7;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+}
+
+/* Auth mode switch (Вход / Регистрация): text tabs with an underline. */
+.mode-tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent transparent -edge transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-border-radius: 0;
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 14px;
+    -fx-padding: 6 2 8 2;
+}
+
+.mode-tab:hover {
+    -fx-background-color: transparent;
+    -fx-text-fill: -text-muted;
+}
+
+.mode-tab:selected {
+    -fx-background-color: transparent;
+    -fx-text-fill: -text-strong;
+    -fx-border-color: transparent transparent -text transparent;
+}
+
+.mode-tab:focused {
+    -fx-border-color: transparent transparent -edge-focus transparent;
+}
+
+/* Filter chips (Все / Активные / ...) */
+.filter-chip {
+    -fx-background-color: transparent;
+    -fx-text-fill: -text-muted;
+    -fx-font-family: "Segoe UI";
+    -fx-padding: 5 12 5 12;
+}
+
+.filter-chip:hover {
+    -fx-background-color: -wash;
+}
+
+.filter-chip:selected {
+    -fx-background-color: -wash-hover;
+    -fx-border-color: -edge-strong;
+    -fx-text-fill: -text-strong;
+}
+
+/* Segmented control (theme / language): a pill with plain segments, no sliding thumb. */
+.segmented {
+    -fx-background-color: -wash;
+    -fx-background-radius: 999;
+    -fx-border-color: -edge;
+    -fx-border-radius: 999;
+    -fx-padding: 3;
+    -fx-spacing: 2;
+}
+
+.segment {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text-helper;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 12px;
+    -fx-padding: 4 10 4 10;
+}
+
+.segment .icon {
+    -fx-text-fill: -text-helper;
+}
+
+.segment:hover {
+    -fx-background-color: -wash;
+}
+
+.segment:selected {
+    -fx-background-color: -wash-pressed;
+    -fx-text-fill: -text-strong;
+}
+
+.segment:selected .icon {
+    -fx-text-fill: -text-strong;
+}
+
+.segment:focused {
+    -fx-border-color: -edge-focus;
+}
+
+/* ============================================================ Navigation */
+
+.top-bar {
+    -fx-background-color: -topbar-bg;
+    -fx-border-color: transparent transparent -edge transparent;
+    -fx-padding: 10 20 10 16;
+}
+
+.nav-item {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -text-muted;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-padding: 6 14 6 12;
+}
+
+.nav-item:hover {
+    -fx-background-color: -wash;
+    -fx-text-fill: -text-strong;
+}
+
+.nav-item:selected {
+    -fx-background-color: -wash-hover;
+    -fx-border-color: -edge;
+    -fx-text-fill: -text-strong;
+}
+
+.nav-item:focused {
+    -fx-border-color: -edge-focus;
+}
+
+.nav-item .icon {
+    -fx-text-fill: -text-helper;
+}
+
+.nav-item:selected .icon, .nav-item:hover .icon {
+    -fx-text-fill: -text;
+}
+
+.user-chip {
+    -fx-background-color: -wash;
+    -fx-background-radius: 999;
+    -fx-border-color: -edge;
+    -fx-border-radius: 999;
+    -fx-padding: 5 12 5 8;
+}
+
+/* ============================================================ Inputs */
+
+.text-field, .password-field, .text-area, .combo-box-base {
+    -fx-background-color: -input-bg;
+    -fx-background-radius: 6;
+    -fx-background-insets: 0;
+    -fx-border-color: -edge;
+    -fx-border-radius: 6;
+    -fx-text-fill: -text-input;
+    -fx-prompt-text-fill: -prompt;
+    -fx-highlight-fill: -accent;
+    -fx-highlight-text-fill: #ffffff;
+    -fx-font-size: 14px;
+}
+
+.text-field, .password-field {
+    -fx-padding: 9 12 9 12;
+}
+
+.text-area {
+    -fx-padding: 4;
+}
+
+.text-area .content {
+    -fx-background-color: transparent;
+    -fx-padding: 6 8 6 8;
+}
+
+.text-area .scroll-pane, .text-area .viewport {
+    -fx-background-color: transparent;
+}
+
+.text-field:hover, .password-field:hover, .text-area:hover, .combo-box-base:hover {
+    -fx-border-color: -edge-strong;
+}
+
+.text-field:focused, .password-field:focused, .text-area:focused, .combo-box-base:focused,
+.combo-box-base:showing {
+    -fx-background-color: -input-bg-focus;
+    -fx-border-color: -edge-focus;
+}
+
+.text-field:disabled, .password-field:disabled, .combo-box-base:disabled {
+    -fx-opacity: 0.6;
+}
+
+/* Search box: the icon sits inside the field */
+.search-box {
+    -fx-background-color: -input-bg;
+    -fx-background-radius: 999;
+    -fx-border-color: -edge;
+    -fx-border-radius: 999;
+    -fx-padding: 0 4 0 12;
+}
+
+.search-box:focus-within {
+    -fx-border-color: -edge-focus;
+}
+
+.search-box .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 7 8 7 4;
+}
+
+.search-box .icon {
+    -fx-text-fill: -text-helper;
+}
+
+/* ComboBox and DatePicker */
+.combo-box-base {
+    -fx-padding: 2 4 2 4;
+}
+
+.combo-box-base > .list-cell, .combo-box-base > .date-picker-display-node {
+    -fx-text-fill: -text-input;
+    -fx-background-color: transparent;
+    -fx-padding: 6 8 6 8;
+}
+
+.date-picker > .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 6 8 6 8;
+}
+
+.combo-box-base > .arrow-button, .date-picker > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 10 0 6;
+}
+
+.combo-box-base > .arrow-button > .arrow, .date-picker > .arrow-button > .arrow {
+    -fx-background-color: -text-helper;
+}
+
+.combo-box-popup > .list-view, .context-menu, .date-picker-popup {
+    -fx-background-color: -surface-popup;
+    -fx-background-radius: 8;
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, -halo, 20, 0, 0, 8);
+    -fx-padding: 4;
+}
+
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -text;
+    -fx-padding: 7 10 7 10;
+    -fx-background-radius: 6;
+}
+
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:hover,
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:selected {
+    -fx-background-color: -row-selected;
+    -fx-text-fill: -text-strong;
+}
+
+.menu-item {
+    -fx-background-radius: 6;
+    -fx-padding: 6 12 6 10;
+}
+
+.menu-item .label {
+    -fx-text-fill: -text;
+}
+
+.menu-item:focused, .menu-item:hover {
+    -fx-background-color: -row-selected;
+}
+
+.date-picker-popup > .month-year-pane {
+    -fx-background-color: transparent;
+}
+
+.date-picker-popup .spinner .label, .date-picker-popup .month-year-pane .label {
+    -fx-text-fill: -text-strong;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.date-picker-popup .spinner .button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.date-picker-popup .spinner .left-arrow, .date-picker-popup .spinner .right-arrow {
+    -fx-background-color: -text-muted;
+}
+
+.date-picker-popup > * > .calendar-grid {
+    -fx-background-color: transparent;
+}
+
+.date-picker-popup .day-name-cell {
+    -fx-text-fill: -text-helper;
+    -fx-background-color: transparent;
+}
+
+.date-picker-popup .date-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -text;
+    -fx-background-radius: 6;
+    -fx-padding: 6;
+}
+
+.date-picker-popup .date-cell:hover, .date-picker-popup .date-cell:focused {
+    -fx-background-color: -wash-hover;
+}
+
+.date-picker-popup .selected {
+    -fx-background-color: -accent;
+    -fx-text-fill: #ffffff;
+}
+
+.date-picker-popup .today {
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 6;
+}
+
+.date-picker-popup .previous-month, .date-picker-popup .next-month {
+    -fx-text-fill: -text-helper;
+    -fx-opacity: 0.5;
+}
+
+.date-picker-popup .date-cell:disabled {
+    -fx-opacity: 0.25;
+}
+
+/* ============================================================ Tables */
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-table-cell-border-color: transparent;
+}
+
+.table-view:focused {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -edge transparent;
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-size: 38px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-alignment: center-left;
+    -fx-padding: 0 8 0 8;
+}
+
+.table-view .column-header .arrow {
+    -fx-background-color: -text-helper;
+}
+
+.table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -edge transparent;
+    -fx-cell-size: 52px;
+    -fx-text-fill: -text;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: -row-hover;
+}
+
+.table-row-cell:selected, .table-row-cell:selected:hover {
+    -fx-background-color: -row-selected;
+}
+
+.table-row-cell:empty {
+    -fx-border-color: transparent;
+}
+
+.table-row-cell:empty:hover {
+    -fx-background-color: transparent;
+}
+
+.table-cell {
+    -fx-text-fill: -text;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+    -fx-border-color: transparent;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: -text-strong;
+}
+
+.table-cell.amount-cell {
+    -fx-alignment: center-right;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.table-view .column-header.amount-column .label {
+    -fx-alignment: center-right;
+}
+
+.table-view > .placeholder {
+    -fx-background-color: transparent;
+}
+
+/* ============================================================ InfoBar, toast, modal */
+
+.info-bar {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 10 12 10 12;
+    -fx-background-color: -wash;
+    -fx-border-color: -edge;
+}
+
+.info-bar.error {
+    -fx-background-color: -danger-wash;
+    -fx-border-color: -danger-edge;
+}
+
+.info-bar.success {
+    -fx-background-color: -success-wash;
+    -fx-border-color: -success-edge;
+}
+
+.info-bar .label {
+    -fx-text-fill: -text-strong;
+}
+
+.info-bar.error .icon {
+    -fx-text-fill: -danger;
+}
+
+.info-bar.success .icon {
+    -fx-text-fill: -success;
+}
+
+.toast {
+    -fx-background-color: -highlight-edge, -surface-popup;
+    -fx-background-insets: 0, 1 0 0 0;
+    -fx-background-radius: 10;
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 10;
+    -fx-padding: 12 16 12 14;
+    -fx-effect: dropshadow(gaussian, -halo, 24, 0, 0, 10);
+}
+
+.toast .icon {
+    -fx-text-fill: -success;
+}
+
+.toast.error .icon {
+    -fx-text-fill: -danger;
+}
+
+.modal-backdrop {
+    -fx-background-color: -backdrop;
+}
+
+/* ============================================================ Dashboard & reports */
+
+.balance-number {
+    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-size: 42px;
+    -fx-text-fill: -display-gradient;
+}
+
+.hero-percent {
+    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-size: 34px;
+    -fx-text-fill: -display-gradient;
+}
+
+.auth-title {
+    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-size: 26px;
+    -fx-text-fill: -text-strong;
+}
+
+.meter-track {
+    -fx-background-color: -track;
+    -fx-background-radius: 999;
+}
+
+.meter-fill {
+    -fx-background-color: -meter-gradient;
+    -fx-background-radius: 999;
+}
+
+.stat-caption {
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 12px;
+}
+
+.stat-value {
+    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-size: 20px;
+    -fx-text-fill: -text-strong;
+}
+
+.ledger-row {
+    -fx-border-color: transparent transparent -edge transparent;
+    -fx-padding: 11 4 11 4;
+}
+
+.ledger-title {
+    -fx-text-fill: -text-strong;
+    -fx-font-size: 14px;
+}
+
+.ledger-amount {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: -text-strong;
+}
+
+.detail-key {
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 13px;
+}
+
+.detail-value {
+    -fx-text-fill: -text-strong;
+    -fx-font-size: 13px;
+}
+
+/* Column chart: thin bars with a rounded top, square at the baseline (dataviz mark spec) */
+.chart-bar {
+    -fx-background-color: -bar-fill;
+    -fx-background-radius: 4 4 0 0;
+}
+
+.chart-bar:hover {
+    -fx-background-color: -bar-fill-hover;
+}
+
+.chart-bar.current {
+    -fx-background-color: -bar-fill-hover;
+}
+
+.chart-baseline {
+    -fx-background-color: -edge-strong;
+    -fx-pref-height: 1px;
+    -fx-max-height: 1px;
+}
+
+.chart-gridline {
+    -fx-background-color: -edge;
+    -fx-pref-height: 1px;
+    -fx-max-height: 1px;
+}
+
+.chart-axis-label {
+    -fx-text-fill: -text-helper;
+    -fx-font-size: 11px;
+}
+
+/* Horizontal bars (creditors): rounded end, square at the start */
+.hbar-fill {
+    -fx-background-color: -bar-fill;
+    -fx-background-radius: 0 4 4 0;
+}
+
+.hbar-fill:hover {
+    -fx-background-color: -bar-fill-hover;
+}
+
+/* Status stacked bar segments */
+.segment-active {
+    -fx-background-color: -info;
+}
+
+.segment-overdue {
+    -fx-background-color: -danger;
+}
+
+.segment-paid {
+    -fx-background-color: -success;
+}
+
+.segment-cancelled {
+    -fx-background-color: -neutral;
+}
+
+.legend-swatch {
+    -fx-background-radius: 3;
+    -fx-min-width: 10;
+    -fx-min-height: 10;
+    -fx-max-width: 10;
+    -fx-max-height: 10;
+}
+
+.kbd {
+    -fx-font-family: "Consolas";
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-strong;
+    -fx-background-color: -wash-hover;
+    -fx-background-radius: 4;
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 4;
+    -fx-padding: 1 6 1 6;
+}
+
+/* ============================================================ Misc controls */
+
+.tooltip {
+    -fx-background-color: -surface-popup;
+    -fx-background-radius: 6;
+    -fx-border-color: -edge-strong;
+    -fx-border-radius: 6;
+    -fx-text-fill: -text;
+    -fx-font-size: 12px;
+    -fx-padding: 6 10 6 10;
+    -fx-effect: dropshadow(gaussian, -halo, 12, 0, 0, 4);
+}
+
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: -edge-strong;
+    -fx-background-radius: 999;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-padding: 0;
+    -fx-shape: " ";
+}
+
+.progress-indicator {
+    -fx-progress-color: -text;
+}
+
+.toggle-button.icon-button {
+    -fx-padding: 7;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+}
+
+.toggle-button.icon-button:selected {
+    -fx-background-color: -wash-pressed;
+}
+
+/* ============================================================ Calendar */
+
+.calendar-day {
+    -fx-background-color: -wash;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8;
+}
+
+.calendar-day:hover {
+    -fx-background-color: -wash-hover;
+}
+
+.calendar-day.other-month {
+    -fx-opacity: 0.4;
+}
+
+.calendar-day.today {
+    -fx-border-color: -edge-strong;
+}
+
+.calendar-day.selected {
+    -fx-background-color: -wash-pressed;
+    -fx-border-color: -edge-focus;
+}
+
+.calendar-day-number {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-strong;
+}
+
+.calendar-mark {
+    -fx-font-size: 11px;
+    -fx-text-fill: -text-muted;
+}
+
+/* ============================================================ Planner and banner */
+
+.planner {
+    -fx-background-color: -wash;
+    -fx-background-radius: 10;
+    -fx-padding: 14;
+}
+
+.banner {
+    -fx-background-color: -danger-wash;
+    -fx-background-radius: 12;
+    -fx-border-color: -danger-edge;
+    -fx-border-radius: 12;
+    -fx-padding: 14 18 14 18;
+}
+
+.banner .icon {
+    -fx-text-fill: -danger;
+}
+
+.calendar-day.in-range {
+    -fx-background-color: -wash-pressed;
+    -fx-border-color: -edge-strong;
+}

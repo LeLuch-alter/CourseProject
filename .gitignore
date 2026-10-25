@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------
+# Build output (Maven recreates it on every build)
+# ---------------------------------------------------------------
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---------------------------------------------------------------
+# Secrets and local configuration — NEVER commit
+# config.example.properties shows the format and IS committed.
+# ---------------------------------------------------------------
+config.properties
+.env
+*.env
+
+# ---------------------------------------------------------------
+# IDE and editor files
+# ---------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+.factorypath
+bin/
+
+# ---------------------------------------------------------------
+# Operating system files
+# ---------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---------------------------------------------------------------
+# Logs, crash reports and files exported from the app
+# ---------------------------------------------------------------
+*.log
+hs_err_pid*
+/*.csv
+
+# ---------------------------------------------------------------
+# Personal working notes and AI-assistant instructions
+# (kept on the developer's computer, not part of the project)
+# ---------------------------------------------------------------
+CLAUDE.md
+SKILL.md
+DESIGN.md
+PROJECT_OVERVIEW.md
+.claude/
+
+# Original high-resolution logo; the app uses src/main/resources/kz/kvit/ui/logo.png
+/logo.png

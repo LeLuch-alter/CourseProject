@@ -1,0 +1,59 @@
+/*
+ * Light theme: loaded after styles.css and redefines the same color tokens.
+ * Being a scene stylesheet, it also reaches popups (combo lists, date picker, tooltips).
+ */
+
+.root {
+    -canvas: #f4f4f5;
+    -surface-deep: #ffffff;
+    -surface-mini: #ffffff;
+    -surface-popup: #ffffff;
+    -text-strong: #18181b;
+    -text: #27272a;
+    -text-muted: #52525b;
+    -text-helper: #71717a;
+    -text-input: #18181b;
+    -display-gradient: #18181b;
+    -meter-gradient: #3f3f46;
+    -bar-fill: #a1a1aa;
+    -bar-fill-hover: #3f3f46;
+
+    -danger: #c4452c;
+    -success: #1f7a68;
+    -info: #3b6ea5;
+    -neutral: #a1a1aa;
+    -danger-wash: rgba(196, 69, 44, 0.09);
+    -danger-edge: rgba(196, 69, 44, 0.35);
+    -success-wash: rgba(31, 122, 104, 0.09);
+    -success-edge: rgba(31, 122, 104, 0.35);
+    -info-wash: rgba(59, 110, 165, 0.09);
+
+    -edge: rgba(0, 0, 0, 0.09);
+    -edge-strong: rgba(0, 0, 0, 0.18);
+    -edge-focus: rgba(0, 0, 0, 0.45);
+    -wash: rgba(0, 0, 0, 0.04);
+    -wash-hover: rgba(0, 0, 0, 0.07);
+    -wash-pressed: rgba(0, 0, 0, 0.11);
+    -glass-top: #ffffff;
+    -glass-bottom: #ffffff;
+    -highlight-edge: #ffffff;
+    -inner-glow: transparent;
+    -halo: rgba(0, 0, 0, 0.08);
+    -input-bg: #ffffff;
+    -input-bg-focus: #ffffff;
+    -prompt: rgba(0, 0, 0, 0.38);
+    -track: rgba(0, 0, 0, 0.08);
+    -chip-bg: #ffffff;
+    -topbar-bg: #fafafa;
+    -backdrop: rgba(0, 0, 0, 0.28);
+    -row-hover: rgba(0, 0, 0, 0.025);
+    -row-selected: rgba(0, 0, 0, 0.06);
+
+    -fx-base: #ececee;
+    -fx-control-inner-background: #ffffff;
+    -fx-control-inner-background-alt: #ffffff;
+}
+
+.glass-panel {
+    -fx-effect: dropshadow(gaussian, -halo, 12, 0, 0, 2);
+}
