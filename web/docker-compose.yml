@@ -1,0 +1,11 @@
+services:
+  kvit-web:
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    image: kvit-web
+    ports:
+      - "8085:80"
+    restart: unless-stopped

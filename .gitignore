@@ -53,3 +53,28 @@ PROJECT_OVERVIEW.md
 
 # Original high-resolution logo; the app uses src/main/resources/kz/kvit/ui/logo.png
 /logo.png
+
+# Folder created by a mistyped "~" path in PowerShell
+/~/
+
+# Course work report: kept out of the public repo so the plagiarism check does not find it online
+Kurstyq_zhumys_Kvit.docx
+Kurstyq_zhumys_Kvit.pdf
+Kurstyq_zhumys_Finance.docx
+Kurstyq_zhumys_Finance.pdf
+
+# A separate course project (finance-appa) that only lives here temporarily
+/finance-appa/
+
+# Higgsfield skills installed locally for asset generation
+.agents/
+skills-lock.json
+
+# Source files for assets and course paperwork: not part of the program
+/newLogo.png
+/*.pdf
+
+# Web client: dependencies, build output, local keys
+web/node_modules/
+web/dist/
+web/.env

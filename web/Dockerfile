@@ -1,0 +1,19 @@
+# Stage 1: build the static site. Supabase settings are baked in at build time
+# (Vite inlines import.meta.env), so pass them as build args.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+RUN npm run build
+
+# Stage 2: serve with nginx (SPA fallback to index.html).
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK CMD wget -qO- http://localhost/ >/dev/null || exit 1

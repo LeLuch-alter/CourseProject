@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Obsidian blueprint: near-black canvas, chalk type, hairline borders, no shadows.
+   Colors are RGB triplets so Tailwind can apply opacity. */
+:root {
+  --bg: 246 246 244;
+  --surface: 255 255 255;
+  --raised: 240 240 238;
+  --line: 222 222 220;
+  --ink: 16 16 16;
+  --muted: 110 110 110;
+  --faint: 160 160 160;
+  --accent: 16 16 16;
+  --accent2: 111 103 89;
+  --good: 22 140 70;
+  --warn: 170 120 20;
+  --bad: 190 50 50;
+  color-scheme: light;
+}
+.dark {
+  --bg: 16 16 16;
+  --surface: 8 8 8;
+  --raised: 26 26 26;
+  --line: 33 33 33;
+  --ink: 243 243 243;
+  --muted: 156 156 156;
+  --faint: 100 100 100;
+  --accent: 243 243 243;
+  --accent2: 111 103 89;
+  --good: 152 255 56;
+  --warn: 230 180 60;
+  --bad: 255 96 96;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-bg text-ink font-sans antialiased; font-feature-settings: 'ss01' on, 'cv11' on; }
+::selection { background: rgb(var(--ink) / 0.15); }
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+h1, h2, h3 { font-weight: 400; letter-spacing: -0.015em; }
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded-lg; }
+  .glass { @apply bg-surface/60 backdrop-blur-xl border border-line rounded-lg; }
+  .btn { @apply inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-sm font-normal transition-all duration-200 select-none whitespace-nowrap
+         focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink/60 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]; }
+  .btn-primary { @apply btn bg-ink text-bg hover:opacity-90; }
+  .btn-outline { @apply btn bg-transparent border border-ink/70 text-ink hover:bg-ink/5 rounded-lg; }
+  .btn-ghost { @apply btn bg-transparent text-muted hover:text-ink hover:bg-ink/5 rounded-lg; }
+  .btn-danger { @apply btn bg-transparent border border-bad/50 text-bad hover:bg-bad/10 rounded-lg; }
+  .btn-icon { @apply btn w-10 px-0 rounded-lg; }
+  .input { @apply w-full h-11 px-3.5 rounded-lg bg-transparent border border-line text-ink placeholder:text-faint
+           focus:outline-none focus:border-ink/60 transition; }
+  .input option { @apply bg-surface text-ink; }
+  .label { @apply block font-mono text-[11px] text-muted mb-1.5 uppercase tracking-wide; }
+  .chip { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded font-mono text-[11px] uppercase tracking-wide border border-line text-muted; }
+  .num { font-variant-numeric: tabular-nums; }
+  .shimmer { @apply relative overflow-hidden bg-raised rounded-lg; }
+  .shimmer::after { content: ""; @apply absolute inset-0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--ink) / 0.05), transparent); animation: shimmer 1.4s infinite; }
+  .th { @apply text-left font-mono text-[11px] font-normal text-muted uppercase tracking-wide px-4 py-3 border-b border-line; }
+  .td { @apply px-4 py-3 border-b border-line text-sm; }
+  .eyebrow { @apply font-mono text-[11px] uppercase tracking-[0.12em] text-muted; }
+  .hairline { @apply border-t border-line; }
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+@keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
+.animate-float { animation: float 7s ease-in-out infinite; }
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-float, .pulse-dot, .shimmer::after { animation: none; } }
