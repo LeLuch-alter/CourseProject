@@ -14,6 +14,7 @@ import type { Debt } from '../api/types'
 import { Confirm, Empty, PageHeader, Progress, Skeleton, StatusChip, Segmented } from '../components/ui'
 import { DebtForm, PaymentForm } from '../components/forms'
 import { Schedule } from '../components/Schedule'
+import { ReceiptLink } from '../components/ReceiptLink'
 
 type Filter = 'ALL' | 'OWED' | 'LENT' | 'ACTIVE' | 'OVERDUE' | 'PAID' | 'CANCELLED'
 
@@ -180,9 +181,9 @@ export function DebtsPage() {
                             {d.creditor_name}
                             {d.direction === 'LENT' && <span className="chip h-5 px-1.5 text-[10px] whitespace-nowrap mt-1 block w-fit text-accent2">{t("debts.lentBadge")}</span>}
                           </td>
-                          <td className="td text-right num">{formatMoney(d.original_amount, locale)}</td>
+                          <td className="td text-right num">{formatMoney(d.original_amount, locale, d.currency)}</td>
                           <td className="td">
-                            <div className="num ">{formatMoney(rem, locale)}</div>
+                            <div className="num ">{formatMoney(rem, locale, d.currency)}</div>
                             <Progress value={prog} className="mt-1.5 h-1.5" color={st === 'OVERDUE' ? 'bg-bad' : st === 'PAID' ? 'bg-good' : 'bg-accent'} />
                           </td>
                           <td className="td text-muted whitespace-nowrap">{d.due_date ? formatDate(d.due_date, locale) : t('due.none')}</td>
@@ -276,7 +277,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
       <div className="mt-4 flex items-end justify-between">
         <div>
           <div className="text-xs text-muted">{t('debts.remaining')}</div>
-          <div className="text-3xl num">{formatMoney(rem, locale)}</div>
+          <div className="text-3xl num">{formatMoney(rem, locale, debt.currency)}</div>
         </div>
         <StatusChip status={st} label={t(`status.${st}`)} />
       </div>
@@ -284,7 +285,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
       <div className="flex justify-between text-xs text-muted mt-1.5">
         <span>{t('debts.repaid', prog)}</span>
         <span className="num">
-          {formatMoney(paid, locale)} / {formatMoney(debt.original_amount, locale)}
+          {formatMoney(paid, locale, debt.currency)} / {formatMoney(debt.original_amount, locale, debt.currency)}
         </span>
       </div>
 
@@ -371,11 +372,12 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
                   <Receipt size={13} />
                 </div>
                 <div className="flex-1 min-w-0 text-sm">
-                  <span className="font-medium num">{formatMoney(p.amount, locale)}</span>
+                  <span className="font-medium num">{formatMoney(p.amount, locale, debt.currency)}</span>
                   <span className="text-muted"> · {formatDate(p.payment_date, locale)}</span>
                   {p.notes && <div className="text-xs text-muted truncate">{p.notes}</div>}
                   {p.mirror_of && <div className="text-[10px] text-faint">{t('payments.mirror')}</div>}
                 </div>
+                {p.receipt_path && <ReceiptLink path={p.receipt_path} />}
                 {!p.mirror_of && (
                   <button className="opacity-0 group-hover:opacity-100 text-faint hover:text-bad transition" onClick={() => setDelPay(p.id)}>
                     <Trash2 size={14} />

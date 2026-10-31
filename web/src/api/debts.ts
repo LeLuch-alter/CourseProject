@@ -25,6 +25,8 @@ export interface DebtInput {
   due_date: string | null
   status: DebtStatus
   notes: string | null
+  currency?: string
+  direction?: 'OWED' | 'LENT'
 }
 
 export async function createDebt(input: DebtInput): Promise<Debt> {
@@ -44,7 +46,7 @@ export async function deleteDebt(id: number): Promise<void> {
   if (error) fail(error)
 }
 
-export async function createPayment(input: { debt_id: number; amount: number; payment_date: string; notes: string | null }): Promise<Payment> {
+export async function createPayment(input: { debt_id: number; amount: number; payment_date: string; notes: string | null; receipt_path?: string | null }): Promise<Payment> {
   const { data, error } = await supabase.from('payments').insert(input).select().single()
   if (error) fail(error)
   return data as Payment
@@ -60,4 +62,19 @@ export async function syncStatus(debt: Debt, remaining: number): Promise<void> {
   if (debt.status === 'CANCELLED') return
   const wanted: DebtStatus = remaining === 0 ? 'PAID' : 'ACTIVE'
   if (debt.status !== wanted) await updateDebt(debt.id, { status: wanted })
+}
+
+// Receipt photos live in a private bucket under <user id>/<random>.<ext>; links are short-lived.
+export async function uploadReceipt(userId: string, file: File): Promise<string> {
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`
+  const { error } = await supabase.storage.from('receipts').upload(path, file, { contentType: file.type })
+  if (error) fail(error)
+  return path
+}
+
+export async function receiptUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('receipts').createSignedUrl(path, 300)
+  if (error) fail(error)
+  return data.signedUrl
 }

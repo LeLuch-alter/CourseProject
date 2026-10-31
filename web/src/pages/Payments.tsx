@@ -144,7 +144,7 @@ export function PaymentsPage() {
                         </div>
                       </button>
                     </td>
-                    <td className="td text-right num text-good">{formatMoney(p.amount, locale)}</td>
+                    <td className="td text-right num text-good">{formatMoney(p.amount, locale, byId[p.debt_id]?.currency)}</td>
                     <td className="td">
                       {!p.mirror_of && (
                         <button className="opacity-0 group-hover:opacity-100 text-faint hover:text-bad transition" onClick={() => setDeleting(p.id)}>

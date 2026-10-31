@@ -8,6 +8,8 @@ import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
 import { exportCsv, exportPaymentsCsv } from '../lib/csv'
 import { PageHeader, stagger } from '../components/ui'
+import { CsvImport } from '../components/CsvImport'
+import { TelegramLink } from '../components/TelegramLink'
 
 export function SettingsPage() {
   const { t } = useI18n()
@@ -35,6 +37,7 @@ export function SettingsPage() {
 
   const shortcuts: Array<[string, string]> = [
     ['Ctrl+K', t('cmd.placeholder')],
+    ['Ctrl+J', t('ai.title')],
     ['Ctrl+1…7', t('cmd.pages')],
     ['Esc', t('common.close')],
   ]
@@ -52,6 +55,7 @@ export function SettingsPage() {
             <button className="btn-outline h-10" onClick={() => void saveReminders()}>{t('common.save')}</button>
           </div>
           <div className="text-xs text-faint mt-3">{t('rem.emailHint')}</div>
+          <TelegramLink />
         </motion.section>
 
         <motion.section {...stagger(1)} className="card p-6">
@@ -65,6 +69,7 @@ export function SettingsPage() {
               <Download size={16} />
               {t('nav.payments')} · CSV
             </button>
+            <CsvImport />
           </div>
         </motion.section>
 

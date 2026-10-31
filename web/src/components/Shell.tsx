@@ -15,6 +15,7 @@ import { formatMoney } from '../lib/money'
 import { formatDateTime } from '../lib/dates'
 import { isOverdue, isDueSoon } from '../lib/calc'
 import { CommandPalette } from './CommandPalette'
+import { Assistant } from './Assistant'
 import { DotField } from './DotField'
 import { FloatingShapes } from './FloatingShapes'
 import { Mark } from '../pages/Login'
@@ -377,6 +378,7 @@ export function Shell() {
       </div>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <Assistant />
       {(notifOpen || userOpen) && (
         <div
           className="fixed inset-0 z-30"

@@ -78,3 +78,8 @@ skills-lock.json
 web/node_modules/
 web/dist/
 web/.env
+
+# Edge Function secrets and generated local SQL with secrets
+supabase/functions/.env
+supabase/*.local.sql
+supabase/.temp/

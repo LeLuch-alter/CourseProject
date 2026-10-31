@@ -68,7 +68,8 @@ h1, h2, h3 { font-weight: 400; letter-spacing: -0.015em; }
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes orbit { to { transform: rotate(360deg) } }
 @keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 .animate-float { animation: float 7s ease-in-out infinite; }
 .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .animate-float, .pulse-dot, .shimmer::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .animate-float, .pulse-dot, .shimmer::after, [style*='orbit'] { animation: none !important; } }

@@ -3,6 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, UserPlus, Check, X, MessageCircle, HandCoins, HandHelping, Send, UserMinus, Users } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
+import { useData } from '../lib/data'
+import { balanceWith } from '../lib/calc'
+import { formatMoney } from '../lib/money'
 import { useAuth } from '../lib/auth'
 import { useToast } from '../lib/toast'
 import { supabase } from '../lib/supabase'
@@ -19,6 +22,7 @@ import { Users2, Receipt } from 'lucide-react'
 export function FriendsPage() {
   const { t, locale } = useI18n()
   const { user } = useAuth()
+  const { debts, payments } = useData()
   const toast = useToast()
   const navigate = useNavigate()
   const { id: activeId, roomId } = useParams()
@@ -256,6 +260,11 @@ export function FriendsPage() {
                   <div className="text-xs text-faint">
                     @{activeFriend.username} · {t('friends.online', formatDate(activeFriend.created_at, locale))}
                   </div>
+                  {(() => {
+                    const bal = balanceWith(activeFriend.id, debts, payments)
+                    if (bal === 0) return <div className="text-xs text-muted mt-0.5">{t('bal.even')}</div>
+                    return <div className={`text-xs mt-0.5 num ${bal > 0 ? 'text-good' : 'text-warn'}`}>{bal > 0 ? t('bal.owesMe', formatMoney(bal, locale)) : t('bal.iOwe', formatMoney(-bal, locale))}</div>
+                  })()}
                 </div>
                 <button className="btn-outline h-9 hidden sm:inline-flex" onClick={() => openLoan('lend')}>
                   <HandCoins size={15} />
@@ -279,7 +288,7 @@ export function FriendsPage() {
                   {t('friends.borrow')}
                 </button>
               </div>
-              <Chat friendId={activeFriend.id} me={me} onRead={() => setUnread((u) => ({ ...u, [activeFriend.id]: 0 }))} />
+              <Chat key={activeFriend.id} friendId={activeFriend.id} me={me} onRead={() => setUnread((u) => ({ ...u, [activeFriend.id]: 0 }))} />
             </>
           ) : (
             <Empty icon={<MessageCircle />} title={t('chat.pick')} text={friends.length ? undefined : t('friends.noneText')} />
@@ -317,7 +326,17 @@ function Chat({ friendId, me, onRead }: { friendId: string; me: string; onRead: 
   const { t, locale } = useI18n()
   const toast = useToast()
   const [messages, setMessages] = useState<Message[]>([])
-  const [text, setText] = useState('')
+  // a draft prepared by the assistant arrives through sessionStorage and is used once
+  const [text, setText] = useState(() => {
+    try {
+      const key = `kvit.draft.${friendId}`
+      const v = sessionStorage.getItem(key) ?? ''
+      sessionStorage.removeItem(key)
+      return v
+    } catch {
+      return ''
+    }
+  })
   const [loading, setLoading] = useState(true)
   const endRef = useRef<HTMLDivElement>(null)
 

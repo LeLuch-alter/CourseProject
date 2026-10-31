@@ -1,50 +1,72 @@
-// Supabase Edge Function: e-mails users about debts due within their reminder window.
-// Runs on the server, so it may use the service_role key (never put that key in the client).
+// Daily reminders about debts that are due soon: Telegram (if linked) and e-mail (if enabled).
+// Called once a day by pg_cron with the CRON_SECRET header, so outsiders cannot trigger it.
 // Deploy:  supabase functions deploy due-reminders --no-verify-jwt
-// Secrets: supabase secrets set RESEND_API_KEY=... SITE_URL=https://your-site
-// Schedule (SQL editor, after pg_cron + pg_net are enabled):
-//   select cron.schedule('kvit-due-emails', '15 6 * * *', $$
-//     select net.http_post('https://<project>.supabase.co/functions/v1/due-reminders',
-//                          '{}'::jsonb, '{"Content-Type":"application/json"}'::jsonb) $$);
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { admin, escapeHtml, json, sendTelegram } from '../_shared/common.ts'
 
-Deno.serve(async () => {
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+interface DebtRow {
+  id: number
+  title: string
+  due_date: string
+  original_amount: number
+  currency: string
+  payments: Array<{ amount: number }>
+}
+
+const SYMBOL: Record<string, string> = { KZT: '₸', USD: '$', EUR: '€', RUB: '₽' }
+
+Deno.serve(async (req) => {
+  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) return new Response('forbidden', { status: 403 })
+  const db = admin()
   const resendKey = Deno.env.get('RESEND_API_KEY')
   const site = Deno.env.get('SITE_URL') ?? ''
-  if (!resendKey) return new Response('RESEND_API_KEY is not set', { status: 500 })
 
-  const { data: profiles, error } = await supabase.from('profiles').select('id, display_name, reminder_days').eq('email_reminders', true)
-  if (error) return new Response(error.message, { status: 500 })
+  const { data: profiles, error } = await db.from('profiles').select('id, display_name, reminder_days, email_reminders')
+  if (error) return json({ error: error.message }, 500)
+  const { data: links } = await db.from('telegram_links').select('user_id, chat_id').not('chat_id', 'is', null)
+  const chatOf = new Map((links ?? []).map((l) => [l.user_id as string, l.chat_id as number]))
 
-  let sent = 0
+  let telegram = 0, email = 0
   for (const p of profiles ?? []) {
-    const { data: user } = await supabase.auth.admin.getUserById(p.id)
-    const email = user?.user?.email
-    if (!email) continue
+    const chatId = chatOf.get(p.id)
+    if (!chatId && !(p.email_reminders && resendKey)) continue
+
     const until = new Date(Date.now() + p.reminder_days * 86400000).toISOString().slice(0, 10)
-    const { data: debts } = await supabase
+    const { data } = await db
       .from('debts')
-      .select('id, title, due_date, original_amount, payments(amount)')
+      .select('id, title, due_date, original_amount, currency, payments(amount)')
       .eq('user_id', p.id)
       .eq('status', 'ACTIVE')
       .eq('direction', 'OWED')
       .lte('due_date', until)
-    const open = (debts ?? []).filter((d) => d.original_amount > (d.payments as Array<{ amount: number }>).reduce((a, x) => a + Number(x.amount), 0))
+      .order('due_date')
+    const open = ((data ?? []) as DebtRow[])
+      .map((d) => ({ ...d, left: Number(d.original_amount) - d.payments.reduce((a, x) => a + Number(x.amount), 0) }))
+      .filter((d) => d.left > 0)
     if (open.length === 0) continue
 
-    const rows = open.map((d) => `<li>${d.title} — до ${d.due_date}</li>`).join('')
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'Kvit <onboarding@resend.dev>',
-        to: email,
-        subject: `Kvit: ${open.length} срок(а) в ближайшие ${p.reminder_days} дн.`,
-        html: `<p>Здравствуйте, ${p.display_name}!</p><ul>${rows}</ul><p><a href="${site}/debts">Открыть Kvit</a></p>`,
-      }),
-    })
-    if (res.ok) sent++
+    const today = new Date().toISOString().slice(0, 10)
+    const lines = open.map((d) => `${d.due_date < today ? '🔴' : '🟡'} ${escapeHtml(d.title)} — ${d.left.toLocaleString('ru-RU')} ${SYMBOL[d.currency] ?? d.currency}, срок ${d.due_date}`)
+
+    if (chatId) {
+      const ok = await sendTelegram(chatId, `<b>Kvit: сроки в ближайшие ${p.reminder_days} дн.</b>\n\n${lines.join('\n')}\n\n<a href="${site}/debts">Открыть Kvit</a>`)
+      if (ok) telegram++
+    }
+    if (p.email_reminders && resendKey) {
+      const { data: u } = await db.auth.admin.getUserById(p.id)
+      const to = u?.user?.email
+      if (!to) continue
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: Deno.env.get('MAIL_FROM') ?? 'Kvit <onboarding@resend.dev>',
+          to,
+          subject: `Kvit: ${open.length} срок(а) в ближайшие ${p.reminder_days} дн.`,
+          html: `<p>Здравствуйте, ${escapeHtml(p.display_name)}!</p><p>${lines.join('<br>')}</p><p><a href="${site}/debts">Открыть Kvit</a></p>`,
+        }),
+      })
+      if (res.ok) email++
+    }
   }
-  return new Response(JSON.stringify({ sent }), { headers: { 'Content-Type': 'application/json' } })
+  return json({ telegram, email })
 })

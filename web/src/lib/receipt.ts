@@ -15,7 +15,7 @@ interface Args {
 }
 
 let fontCache: string | null = null
-async function loadFont(): Promise<string | null> {
+export async function loadFont(): Promise<string | null> {
   if (fontCache) return fontCache
   try {
     // Roboto supports Cyrillic and Kazakh letters; the built-in Helvetica does not.

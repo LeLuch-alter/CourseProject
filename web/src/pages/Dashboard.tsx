@@ -7,8 +7,8 @@ import { useAuth } from '../lib/auth'
 import { useData } from '../lib/data'
 import { formatMoney } from '../lib/money'
 import { formatDate, daysBetween, todayIso } from '../lib/dates'
-import { remainingFor, forecastMonths, isOverdue, effectiveStatus } from '../lib/calc'
-import { Ring, Skeleton, Empty, stagger, StatusChip } from '../components/ui'
+import { remainingFor, forecastMonths, isOverdue, effectiveStatus, debtorsOf } from '../lib/calc'
+import { Ring, Skeleton, Empty, stagger, StatusChip, Progress } from '../components/ui'
 import { DebtForm, PaymentForm } from '../components/forms'
 
 function greetingKey(): string {
@@ -28,6 +28,7 @@ export function DashboardPage() {
   const { t, locale } = useI18n()
   const { profile } = useAuth()
   const { debts, payments, summary, loading, error, reload } = useData()
+  const debtors = useMemo(() => debtorsOf(debts, payments), [debts, payments])
   const navigate = useNavigate()
   const [debtOpen, setDebtOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
@@ -127,6 +128,7 @@ export function DashboardPage() {
                     <Counter value={summary.remaining} locale={locale} />
                   </div>
                   <div className="text-sm text-muted mt-1">{t('dash.ofTotal', formatMoney(summary.total, locale))}</div>
+                  {Object.keys(summary.foreignOwed).length > 0 && <div className="text-xs text-muted mt-1">{t('dash.foreign')} {Object.entries(summary.foreignOwed).map(([c, v]) => formatMoney(v, locale, c)).join(', ')}</div>}
                   <div className="mt-3 text-sm">
                     {forecast ? (
                       <span className="chip">
@@ -147,9 +149,22 @@ export function DashboardPage() {
                 <HandCoins className="text-accent2" size={20} strokeWidth={1.5} />
               </div>
               <div className="text-[34px] leading-none mt-3 num">{formatMoney(summary.lentRemaining, locale)}</div>
-              <div className="text-xs text-muted mt-1">{t('dash.lentHint')}</div>
-              <Link to="/loans" className="btn-outline mt-5 w-full">
-                {t('nav.loans')} <ArrowUpRight size={16} />
+              {summary.lentTotal > 0 ? (
+                <>
+                  <Progress value={(summary.lentReturned / summary.lentTotal) * 100} className="mt-3 h-1.5" color="bg-good" />
+                  <div className="flex justify-between text-xs text-muted mt-1.5"><span>{t('dash.lentBack', formatMoney(summary.lentReturned, locale))}</span><span className="num">{formatMoney(summary.lentTotal, locale)}</span></div>
+                  <ul className="mt-4 space-y-1.5">
+                    {debtors.slice(0, 3).map((d) => (
+                      <li key={d.name} className="flex items-center justify-between text-sm"><span className="truncate">{d.name}</span><span className="num text-muted">{formatMoney(d.remaining, locale)}</span></li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <div className="text-xs text-muted mt-1">{t('dash.lentHint')}</div>
+              )}
+              {Object.keys(summary.foreignLent).length > 0 && <div className="text-xs text-muted mt-2">+ {Object.entries(summary.foreignLent).map(([c, v]) => formatMoney(v, locale, c)).join(', ')}</div>}
+              <Link to="/debts?f=LENT" className="btn-outline mt-5 w-full">
+                {t('debts.filter.LENT')} <ArrowUpRight size={16} />
               </Link>
             </motion.section>
           </div>
@@ -198,7 +213,7 @@ export function DashboardPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="num">{formatMoney(rem, locale)}</div>
+                            <div className="num">{formatMoney(rem, locale, d.currency)}</div>
                             <StatusChip status={effectiveStatus(d, payments)} label={t(`status.${effectiveStatus(d, payments)}`)} />
                           </div>
                         </button>
@@ -240,7 +255,7 @@ export function DashboardPage() {
                         <div className="text-sm font-medium truncate">{debtById[p.debt_id]?.title ?? '—'}</div>
                         <div className="text-xs text-muted">{formatDate(p.payment_date, locale)}</div>
                       </div>
-                      <div className="text-sm font-semibold num">{formatMoney(p.amount, locale)}</div>
+                      <div className="text-sm font-semibold num">{formatMoney(p.amount, locale, debtById[p.debt_id]?.currency)}</div>
                     </li>
                   ))}
                 </ul>

@@ -2,10 +2,12 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 import { useData } from '../lib/data'
-import { parseAmount, formatMoney } from '../lib/money'
+import { parseAmount, formatMoney, CURRENCIES, CURRENCY_SYMBOL, type Currency } from '../lib/money'
+import { useAuth } from '../lib/auth'
+import { Camera, X } from 'lucide-react'
 import { todayIso } from '../lib/dates'
 import { validateDebt, validatePayment, remainingFor, effectiveStatus } from '../lib/calc'
-import { createDebt, updateDebt, createPayment, syncStatus } from '../api/debts'
+import { createDebt, updateDebt, createPayment, syncStatus, uploadReceipt } from '../api/debts'
 import type { Debt, DebtStatus } from '../api/types'
 import { Field, Modal } from './ui'
 import { Select } from './Select'
@@ -21,6 +23,7 @@ export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () =
   const [dueDate, setDueDate] = useState(debt?.due_date ?? '')
   const [status, setStatus] = useState<DebtStatus>(debt?.status ?? 'ACTIVE')
   const [notes, setNotes] = useState(debt?.notes ?? '')
+  const [currency, setCurrency] = useState<Currency>((debt?.currency as Currency) ?? 'KZT')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const linked = !!debt?.loan_id
@@ -42,6 +45,7 @@ export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () =
         due_date: dueDate || null,
         status,
         notes: notes.trim() || null,
+        currency,
       }
       if (debt) await updateDebt(debt.id, input)
       else await createDebt(input)
@@ -66,7 +70,10 @@ export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () =
         </Field>
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label={t('form.amount')} error={errors.amount && t(`err.${errors.amount}`)}>
-            <input className="input num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" disabled={linked} />
+            <div className="flex gap-2">
+              <input className="input num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" disabled={linked} />
+              <Select<Currency> className="w-24 shrink-0" value={currency} onChange={setCurrency} disabled={linked} options={CURRENCIES.map((c) => ({ value: c, label: `${CURRENCY_SYMBOL[c]} ${c}` }))} />
+            </div>
           </Field>
           <Field label={t('form.rate')} optional={t('common.optional')} error={errors.rate && t(`err.${errors.rate}`)} hint={t('form.rate.hint')}>
             <input className="input num" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0" />
@@ -108,10 +115,13 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(todayIso())
   const [notes, setNotes] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const { user } = useAuth()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
 
   const debt = debts.find((d) => d.id === selected)
+  const cur = debt?.currency ?? 'KZT'
   const remaining = debt ? remainingFor(debt, payments) : 0
 
   async function submit(e: FormEvent) {
@@ -123,12 +133,13 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
     if (Object.keys(errs).length) return
     setBusy(true)
     try {
-      await createPayment({ debt_id: debt.id, amount: parsed!, payment_date: date, notes: notes.trim() || null })
+      const receipt_path = photo && user ? await uploadReceipt(user.id, photo) : null
+      await createPayment({ debt_id: debt.id, amount: parsed!, payment_date: date, notes: notes.trim() || null, receipt_path })
       const left = remaining - parsed!
       await syncStatus(debt, Math.max(0, Math.round(left * 100) / 100))
       await reload()
       if (left <= 0) toast.success(t('toast.paidOff', debt.title))
-      else toast.success(t('common.saved'), formatMoney(parsed!))
+      else toast.success(t('common.saved'), formatMoney(parsed!, undefined, cur))
       onClose()
     } catch (err) {
       toast.error(t('common.saveFailed'), err instanceof Error ? err.message : undefined)
@@ -140,7 +151,7 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
   return (
     <Modal open={open} onClose={onClose} title={t('form.payment.new')}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label={t('form.payment.debt')} hint={debt ? t('form.payment.remaining', formatMoney(remaining)) : undefined}>
+        <Field label={t('form.payment.debt')} hint={debt ? t('form.payment.remaining', formatMoney(remaining, undefined, cur)) : undefined}>
           <Select<number> value={selected} onChange={setSelected} options={payable.map((d) => ({ value: d.id, label: d.title, hint: d.creditor_name }))} />
         </Field>
         <Field label={t('form.amount')} error={(errors.amount && t(`err.${errors.amount}`)) || (errors.form && t(`err.${errors.form}`))}>
@@ -156,6 +167,25 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
         </Field>
         <Field label={t('form.notes')} optional={t('common.optional')}>
           <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} />
+        </Field>
+        <Field label={t('receipt.label')} optional={t('common.optional')} hint={t('receipt.hint')}>
+          {photo ? (
+            <div className="flex items-center gap-2 h-11 px-3 rounded-lg border border-line text-sm">
+              <Camera size={15} className="text-accent2" />
+              <span className="flex-1 truncate">{photo.name}</span>
+              <button type="button" className="text-faint hover:text-ink" onClick={() => setPhoto(null)} aria-label={t('common.delete')}><X size={15} /></button>
+            </div>
+          ) : (
+            <label className="btn-outline w-full cursor-pointer">
+              <Camera size={15} />
+              {t('receipt.add')}
+              <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f && f.size > 5 * 1024 * 1024) toast.error(t('receipt.tooBig'))
+                else setPhoto(f ?? null)
+              }} />
+            </label>
+          )}
         </Field>
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="btn-ghost" onClick={onClose}>

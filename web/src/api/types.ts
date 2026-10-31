@@ -15,6 +15,8 @@ export interface Debt {
   direction: Direction
   loan_id: string | null
   counterparty_id: string | null
+  currency?: string
+  split_id?: string | null
 }
 
 export interface Payment {
@@ -26,6 +28,7 @@ export interface Payment {
   created_at: string
   mirror_of: number | null
   created_by: string | null
+  receipt_path?: string | null
 }
 
 export interface Profile {

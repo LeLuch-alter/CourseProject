@@ -183,7 +183,7 @@ export function CalendarPage() {
                             {t('cal.dueLabel')} · {d.creditor_name}
                           </div>
                         </div>
-                        <span className="text-sm num">{formatMoney(d.original_amount, locale)}</span>
+                        <span className="text-sm num">{formatMoney(d.original_amount, locale, d.currency)}</span>
                       </button>
                     ))}
                     {byDay[day].pay.map((p) => (
@@ -193,7 +193,7 @@ export function CalendarPage() {
                           <div className="text-sm truncate">{debtById[p.debt_id]?.title}</div>
                           <div className="text-xs text-muted">{t('cal.payLabel')}</div>
                         </div>
-                        <span className="text-sm num">{formatMoney(p.amount, locale)}</span>
+                        <span className="text-sm num">{formatMoney(p.amount, locale, debtById[p.debt_id]?.currency)}</span>
                       </button>
                     ))}
                   </div>

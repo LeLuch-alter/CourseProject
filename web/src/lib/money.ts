@@ -3,16 +3,22 @@
 export const toTiyn = (v: number | string): number => Math.round(Number(v) * 100)
 export const fromTiyn = (t: number): number => t / 100
 
+export type Currency = 'KZT' | 'USD' | 'EUR' | 'RUB'
+export const CURRENCIES: Currency[] = ['KZT', 'USD', 'EUR', 'RUB']
+export const CURRENCY_SYMBOL: Record<Currency, string> = { KZT: '₸', USD: '$', EUR: '€', RUB: '₽' }
+
 export function sum(values: Array<number | string>): number {
   return fromTiyn(values.reduce<number>((acc, v) => acc + toTiyn(v), 0))
 }
 
-export function formatMoney(v: number | string, locale = 'ru-RU'): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number(v)) + ' ₸'
+export function formatMoney(v: number | string, locale = 'ru-RU', currency: Currency | string = 'KZT'): string {
+  const symbol = CURRENCY_SYMBOL[currency as Currency] ?? currency
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number(v)) + ' ' + symbol
 }
 
-export function formatCompact(v: number, locale = 'ru-RU'): string {
-  return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(v) + ' ₸'
+export function formatCompact(v: number, locale = 'ru-RU', currency: Currency | string = 'KZT'): string {
+  const symbol = CURRENCY_SYMBOL[currency as Currency] ?? currency
+  return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(v) + ' ' + symbol
 }
 
 // Accepts "12 500", "12500.50", "12500,5". Returns null when not a positive amount with <= 2 decimals.

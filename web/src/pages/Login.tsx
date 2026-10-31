@@ -8,6 +8,7 @@ import { useToast } from '../lib/toast'
 import { Field } from '../components/ui'
 import { DotField } from '../components/DotField'
 import { TapeHero } from '../components/TapeHero'
+import { Starfield, Planet } from '../components/Starfield'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -81,7 +82,10 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-full flex flex-col bg-bg overflow-hidden">
-      <DotField className="absolute inset-0 w-full h-full" density={14} themed />
+      <Starfield className="absolute inset-0 w-full h-full" />
+      <Planet className="w-[560px] h-[560px] -left-56 -bottom-64 opacity-80 hidden md:block" />
+      <Planet className="w-[260px] h-[260px] -right-20 top-24 opacity-60 hidden lg:block [&_svg]:rotate-[30deg]" />
+      <DotField className="absolute inset-0 w-full h-full" density={14} themed intensity={0.55} />
       <TapeHero className="opacity-70" />
 
       <header className="relative z-10 flex items-center justify-between px-6 sm:px-10 h-16">

@@ -1,11 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Download } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
 import { formatMoney, formatCompact, sum } from '../lib/money'
-import { paymentsByMonth, remainingFor, effectiveStatus, forecastMonths } from '../lib/calc'
-import { Empty, PageHeader, Progress, Skeleton, stagger } from '../components/ui'
+import { paymentsByMonth, remainingFor, effectiveStatus, forecastMonths, currencyOf } from '../lib/calc'
+import { todayIso } from '../lib/dates'
+import { PlanCard } from '../components/PlanCard'
+import { exportReportPdf } from '../lib/reportPdf'
+import { Empty, PageHeader, Progress, Segmented, Skeleton, stagger } from '../components/ui'
 
 const BAR_MAX = 150
 
@@ -13,9 +16,17 @@ export function ReportsPage() {
   const { t, locale } = useI18n()
   const { debts, payments, summary, loading } = useData()
 
-  const owed = useMemo(() => debts.filter((d) => d.direction === 'OWED' && d.status !== 'CANCELLED'), [debts])
+  const [period, setPeriod] = useState<'3' | '6' | '12' | 'custom'>('6')
+  const thisMonth = todayIso().slice(0, 7)
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
+  const [to, setTo] = useState(thisMonth)
+  // custom period: whole months from..to; the chart ends on the last day of 'to'
+  const span = period === 'custom' ? Math.max(1, (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5)) - Number(from.slice(5)) + 1) : Number(period)
+  const endDay = period === 'custom' ? `${to}-${String(new Date(Number(to.slice(0, 4)), Number(to.slice(5)), 0).getDate()).padStart(2, '0')}` : todayIso()
+  const owed = useMemo(() => debts.filter((d) => d.direction === 'OWED' && d.status !== 'CANCELLED' && currencyOf(d) === 'KZT'), [debts])
   const owedPayments = useMemo(() => payments.filter((p) => owed.some((d) => d.id === p.debt_id)), [payments, owed])
-  const months = useMemo(() => paymentsByMonth(owedPayments, 6), [owedPayments])
+  const months = useMemo(() => paymentsByMonth(owedPayments, span, endDay), [owedPayments, span, endDay])
+  const periodTotal = sum(months.map((m) => m.total))
   const maxMonth = Math.max(1, ...months.map((m) => m.total))
 
   const byCreditor = useMemo(() => {
@@ -33,7 +44,7 @@ export function ReportsPage() {
   const statusTotal = Object.values(statuses).reduce((a, b) => a + b, 0)
   const forecast = forecastMonths(summary.remaining, owedPayments)
 
-  const lent = debts.filter((d) => d.direction === 'LENT' && d.status !== 'CANCELLED')
+  const lent = debts.filter((d) => d.direction === 'LENT' && d.status !== 'CANCELLED' && currencyOf(d) === 'KZT')
   const lentBack = sum(lent.map((d) => Number(d.original_amount) - remainingFor(d, payments)))
 
   if (loading)
@@ -49,10 +60,24 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.reports')} />
+      <PageHeader
+        title={t('nav.reports')}
+        actions={
+          <>
+            <Segmented<'3' | '6' | '12' | 'custom'> value={period} onChange={setPeriod} options={[{ value: '3', label: t('rep.m3') }, { value: '6', label: t('rep.m6') }, { value: '12', label: t('rep.m12') }, { value: 'custom', label: t('rep.custom') }]} />
+            <button className="btn-outline h-9" onClick={() => void exportReportPdf({ t, locale, months, byCreditor, statuses, summary, forecast, periodTotal })}><Download size={15} />PDF</button>
+          </>
+        }
+      />
+      {period === 'custom' && (
+        <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div><label className="label">{t('rep.from')}</label><input className="input h-10" type="month" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></div>
+          <div><label className="label">{t('rep.to')}</label><input className="input h-10" type="month" value={to} min={from} max={thisMonth} onChange={(e) => e.target.value && setTo(e.target.value)} /></div>
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <motion.section {...stagger(0)} className="card p-5">
-          <h2 className="mb-4">{t('reports.byMonth')}</h2>
+          <div className="flex items-baseline justify-between mb-4"><h2>{t('reports.byMonth')}</h2><span className="text-sm text-muted num">{t('rep.total', formatMoney(periodTotal, locale))}</span></div>
           <div className="relative h-52">
             {[0, 0.5, 1].map((f) => (
               <div key={f} className="absolute left-0 right-0 border-t border-dashed border-line" style={{ bottom: 24 + f * BAR_MAX }} />
@@ -140,6 +165,7 @@ export function ReportsPage() {
             </div>
           </div>
         </motion.section>
+        <PlanCard />
       </div>
     </div>
   )
