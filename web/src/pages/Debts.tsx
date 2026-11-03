@@ -326,19 +326,19 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
         </Link>
       )}
 
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         {canPay && (
-          <button className="btn-primary flex-1" onClick={onPay}>
+          <button className="btn-primary flex-[1_0_180px]" onClick={onPay}>
             {debt.direction === 'LENT' ? <HandCoins size={16} /> : <Receipt size={16} />}
             {debt.direction === 'LENT' ? t('loans.markPaid') : t('debts.pay')}
           </button>
         )}
-        <button className="btn-outline" onClick={onEdit}>
+        <button className="btn-outline flex-[1_0_auto]" onClick={onEdit}>
           <Pencil size={16} />
           {t('common.edit')}
         </button>
         {!debt.loan_id && (
-          <button className="btn-danger btn-icon" onClick={onDelete} aria-label={t('common.delete')}>
+          <button className="btn-danger btn-icon shrink-0" onClick={onDelete} aria-label={t('common.delete')}>
             <Trash2 size={16} />
           </button>
         )}

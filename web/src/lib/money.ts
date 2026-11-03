@@ -11,14 +11,16 @@ export function sum(values: Array<number | string>): number {
   return fromTiyn(values.reduce<number>((acc, v) => acc + toTiyn(v), 0))
 }
 
+const numberLocale = (locale: string) => (locale.startsWith('kk') ? 'ru-RU' : locale)
+
 export function formatMoney(v: number | string, locale = 'ru-RU', currency: Currency | string = 'KZT'): string {
   const symbol = CURRENCY_SYMBOL[currency as Currency] ?? currency
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number(v)) + ' ' + symbol
+  return new Intl.NumberFormat(numberLocale(locale), { maximumFractionDigits: 2 }).format(Number(v)) + ' ' + symbol
 }
 
 export function formatCompact(v: number, locale = 'ru-RU', currency: Currency | string = 'KZT'): string {
   const symbol = CURRENCY_SYMBOL[currency as Currency] ?? currency
-  return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(v) + ' ' + symbol
+  return new Intl.NumberFormat(numberLocale(locale), { notation: 'compact', maximumFractionDigits: 1 }).format(v) + ' ' + symbol
 }
 
 // Accepts "12 500", "12500.50", "12500,5". Returns null when not a positive amount with <= 2 decimals.

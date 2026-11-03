@@ -77,7 +77,7 @@ export function ReportsPage() {
       )}
       <div className="grid gap-4 lg:grid-cols-2">
         <motion.section {...stagger(0)} className="card p-5">
-          <div className="flex items-baseline justify-between mb-4"><h2>{t('reports.byMonth')}</h2><span className="text-sm text-muted num">{t('rep.total', formatMoney(periodTotal, locale))}</span></div>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-4"><h2>{t('reports.byMonth')}</h2><span className="text-sm text-muted num">{t('rep.total', formatMoney(periodTotal, locale))}</span></div>
           <div className="relative h-52">
             {[0, 0.5, 1].map((f) => (
               <div key={f} className="absolute left-0 right-0 border-t border-dashed border-line" style={{ bottom: 24 + f * BAR_MAX }} />
@@ -115,9 +115,9 @@ export function ReportsPage() {
             <ul className="space-y-3">
               {byCreditor.slice(0, 8).map(([name, v]) => (
                 <li key={name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium truncate">{name}</span>
-                    <span className="num text-muted">
+                  <div className="flex justify-between gap-3 text-sm mb-1">
+                    <span className="font-medium truncate min-w-0">{name}</span>
+                    <span className="num text-muted shrink-0">
                       {formatMoney(v, locale)} · {Math.round((v / creditorTotal) * 100)}%
                     </span>
                   </div>

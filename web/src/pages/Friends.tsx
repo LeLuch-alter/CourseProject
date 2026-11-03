@@ -253,38 +253,37 @@ export function FriendsPage() {
             <GroupChat room={rooms.find((r) => r.id === roomId)!} me={me} profiles={profiles} onLeft={() => { navigate('/friends'); void load() }} />
           ) : activeFriend ? (
             <>
-              <div className="flex items-center gap-3 px-4 h-16 border-b border-line">
-                <Avatar profile={activeFriend} size={38} />
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+                <Avatar profile={activeFriend} size={40} />
                 <div className="flex-1 min-w-0">
                   <div className="truncate">{activeFriend.display_name}</div>
-                  <div className="text-xs text-faint">
+                  <div className="text-xs text-faint truncate">
                     @{activeFriend.username} · {t('friends.online', formatDate(activeFriend.created_at, locale))}
                   </div>
-                  {(() => {
-                    const bal = balanceWith(activeFriend.id, debts, payments)
-                    if (bal === 0) return <div className="text-xs text-muted mt-0.5">{t('bal.even')}</div>
-                    return <div className={`text-xs mt-0.5 num ${bal > 0 ? 'text-good' : 'text-warn'}`}>{bal > 0 ? t('bal.owesMe', formatMoney(bal, locale)) : t('bal.iOwe', formatMoney(-bal, locale))}</div>
-                  })()}
                 </div>
-                <button className="btn-outline h-9 hidden sm:inline-flex" onClick={() => openLoan('lend')}>
-                  <HandCoins size={15} />
-                  {t('friends.lend')}
-                </button>
-                <button className="btn-outline h-9 hidden sm:inline-flex" onClick={() => openLoan('borrow')}>
-                  <HandHelping size={15} />
-                  {t('friends.borrow')}
-                </button>
-                <button className="btn-ghost btn-icon h-9 w-9 text-muted" onClick={() => setRemoving(relation(activeFriend.id) ?? null)} title={t('friends.remove')}>
+                <button className="btn-ghost btn-icon h-9 w-9 text-muted shrink-0" onClick={() => setRemoving(relation(activeFriend.id) ?? null)} title={t('friends.remove')} aria-label={t('friends.remove')}>
                   <UserMinus size={16} />
                 </button>
               </div>
-              <div className="sm:hidden flex gap-2 p-3 border-b border-line">
-                <button className="btn-outline h-9 flex-1" onClick={() => openLoan('lend')}>
-                  <HandCoins size={15} />
+              <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-line">
+                {(() => {
+                  const bal = balanceWith(activeFriend.id, debts, payments)
+                  const tone = bal > 0 ? 'text-good' : bal < 0 ? 'text-warn' : 'text-muted'
+                  const text = bal > 0 ? t('bal.owesMe', formatMoney(bal, locale)) : bal < 0 ? t('bal.iOwe', formatMoney(-bal, locale)) : t('bal.even')
+                  return (
+                    <span className={`chip h-7 normal-case tracking-normal font-sans text-xs num whitespace-nowrap ${tone}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${bal > 0 ? 'bg-good' : bal < 0 ? 'bg-warn' : 'bg-faint'}`} />
+                      {text}
+                    </span>
+                  )
+                })()}
+                <div className="flex-1" />
+                <button className="btn-outline h-8 px-3 text-xs" onClick={() => openLoan('lend')}>
+                  <HandCoins size={14} />
                   {t('friends.lend')}
                 </button>
-                <button className="btn-outline h-9 flex-1" onClick={() => openLoan('borrow')}>
-                  <HandHelping size={15} />
+                <button className="btn-outline h-8 px-3 text-xs" onClick={() => openLoan('borrow')}>
+                  <HandHelping size={14} />
                   {t('friends.borrow')}
                 </button>
               </div>
