@@ -369,11 +369,11 @@ export function Shell() {
         </header>
 
         <main className="flex-1 px-4 sm:px-6 py-6 max-w-[1400px] w-full mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div key={location.pathname.split('/')[1]} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }}>
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          {/* No exit animation on purpose: with AnimatePresence mode="wait" the next page waited for the old one
+              to finish fading out, and when that never finished (fast clicks, tab in background) the page stayed blank. */}
+          <motion.div key={location.pathname.split('/')[1]} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+            <Outlet />
+          </motion.div>
         </main>
       </div>
 
