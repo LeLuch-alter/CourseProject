@@ -19,11 +19,9 @@ export async function exportReportPdf({ t, locale, months, byCreditor, statuses,
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const font = await loadFont()
-  if (font) {
-    doc.addFileToVFS('Roboto.woff', font)
-    doc.addFont('Roboto.woff', 'Roboto', 'normal')
-    doc.setFont('Roboto')
-  }
+  doc.addFileToVFS('NotoSans.ttf', font)
+  doc.addFont('NotoSans.ttf', 'NotoSans', 'normal')
+  doc.setFont('NotoSans')
   const M = 20
   let y = 22
   const line = (k: string, v: string, size = 11) => {

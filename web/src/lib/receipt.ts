@@ -15,33 +15,26 @@ interface Args {
 }
 
 let fontCache: string | null = null
-export async function loadFont(): Promise<string | null> {
+export async function loadFont(): Promise<string> {
   if (fontCache) return fontCache
-  try {
-    // Roboto supports Cyrillic and Kazakh letters; the built-in Helvetica does not.
-    const res = await fetch('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.0.8/files/roboto-cyrillic-400-normal.woff')
-    if (!res.ok) return null
-    const buf = await res.arrayBuffer()
-    let bin = ''
-    new Uint8Array(buf).forEach((b) => {
-      bin += String.fromCharCode(b)
-    })
-    fontCache = btoa(bin)
-    return fontCache
-  } catch {
-    return null
-  }
+  // jsPDF reads only TrueType fonts. Noto Sans is bundled with the site and covers Cyrillic,
+  // the Kazakh letters and the tenge sign; the built-in Helvetica has none of them.
+  const res = await fetch('/fonts/NotoSans-Regular.ttf')
+  if (!res.ok) throw new Error(`Font download failed: ${res.status}`)
+  const bytes = new Uint8Array(await res.arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  fontCache = btoa(bin)
+  return fontCache
 }
 
 export async function downloadReceiptPdf({ loan, lender, borrower, text, t, locale }: Args) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const font = await loadFont()
-  if (font) {
-    doc.addFileToVFS('Roboto.woff', font)
-    doc.addFont('Roboto.woff', 'Roboto', 'normal')
-    doc.setFont('Roboto')
-  }
+  doc.addFileToVFS('NotoSans.ttf', font)
+  doc.addFont('NotoSans.ttf', 'NotoSans', 'normal')
+  doc.setFont('NotoSans')
   const W = 210,
     M = 20
   doc.setFontSize(9)

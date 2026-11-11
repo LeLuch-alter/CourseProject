@@ -200,7 +200,6 @@ export function LoginPage() {
 
       <footer className="relative z-10 flex items-center justify-between px-6 sm:px-10 h-12 font-mono text-[11px] text-faint uppercase tracking-wide">
         <span>© {new Date().getFullYear()} Kvit</span>
-        <span>{t('auth.footer')}</span>
       </footer>
     </div>
   )

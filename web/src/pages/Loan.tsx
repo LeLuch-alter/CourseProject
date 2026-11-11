@@ -243,7 +243,11 @@ export function LoanPage() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg">{t('loans.receipt')}</h2>
             <div className="flex gap-2">
-              <button className="btn-outline h-9" onClick={() => downloadReceiptPdf({ loan, lender, borrower, text: receiptText, t, locale, lang })}>
+              <button className="btn-outline h-9" onClick={() =>
+                  downloadReceiptPdf({ loan, lender, borrower, text: receiptText, t, locale, lang }).catch((e: unknown) =>
+                    toast.error(t('pdf.failed'), e instanceof Error ? e.message : undefined),
+                  )
+                }>
                 <Download size={15} />
                 {t('loans.download')}
               </button>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useToast } from '../lib/toast'
 import { motion } from 'framer-motion'
 import { BarChart3, Download } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
@@ -14,6 +15,14 @@ const BAR_MAX = 150
 
 export function ReportsPage() {
   const { t, locale } = useI18n()
+  const toast = useToast()
+  const downloadPdf = async () => {
+    try {
+      await exportReportPdf({ t, locale, months, byCreditor, statuses, summary, forecast, periodTotal })
+    } catch (e) {
+      toast.error(t('pdf.failed'), e instanceof Error ? e.message : undefined)
+    }
+  }
   const { debts, payments, summary, loading } = useData()
 
   const [period, setPeriod] = useState<'3' | '6' | '12' | 'custom'>('6')
@@ -65,7 +74,7 @@ export function ReportsPage() {
         actions={
           <>
             <Segmented<'3' | '6' | '12' | 'custom'> value={period} onChange={setPeriod} options={[{ value: '3', label: t('rep.m3') }, { value: '6', label: t('rep.m6') }, { value: '12', label: t('rep.m12') }, { value: 'custom', label: t('rep.custom') }]} />
-            <button className="btn-outline h-9" onClick={() => void exportReportPdf({ t, locale, months, byCreditor, statuses, summary, forecast, periodTotal })}><Download size={15} />PDF</button>
+            <button className="btn-outline h-9" onClick={() => void downloadPdf()}><Download size={15} />PDF</button>
           </>
         }
       />

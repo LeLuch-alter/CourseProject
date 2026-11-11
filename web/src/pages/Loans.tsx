@@ -103,7 +103,6 @@ export function LoansPage() {
     <div>
       <PageHeader
         title={t('loans.title')}
-        subtitle={t('loans.subtitle')}
         actions={
           <>
             <button className="btn-outline" onClick={() => navigate('/friends?action=borrow')}>

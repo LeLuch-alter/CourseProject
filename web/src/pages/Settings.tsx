@@ -54,7 +54,6 @@ export function SettingsPage() {
             <label className="flex items-center gap-2 h-10 text-sm cursor-pointer"><input type="checkbox" className="accent-current" checked={email} onChange={(e) => setEmail(e.target.checked)} />{t('rem.email')}</label>
             <button className="btn-outline h-10" onClick={() => void saveReminders()}>{t('common.save')}</button>
           </div>
-          <div className="text-xs text-faint mt-3">{t('rem.emailHint')}</div>
           <TelegramLink />
         </motion.section>
 
