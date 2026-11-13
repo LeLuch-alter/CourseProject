@@ -40,7 +40,14 @@ export interface Profile {
   created_at: string
   reminder_days?: number
   email_reminders?: boolean
+  reminder_time?: string
+  reminder_tz?: string
+  reminder_mode?: ReminderMode
+  reminder_weekdays?: number[]
+  reminder_dates?: string[]
 }
+
+export type ReminderMode = 'daily' | 'weekdays' | 'dates'
 
 export type FriendshipStatus = 'PENDING' | 'ACCEPTED'
 export interface Friendship {

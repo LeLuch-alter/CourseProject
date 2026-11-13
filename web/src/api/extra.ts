@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { ReminderMode } from './types'
 import { addMonths } from '../lib/dates'
 import { toTiyn, fromTiyn } from '../lib/money'
 
@@ -108,8 +109,18 @@ export async function sendRoomMessage(roomId: string, body: string): Promise<Roo
 
 // ---------------------------------------------------------------- reminders
 
-export async function updateReminderSettings(userId: string, days: number, email: boolean): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ reminder_days: days, email_reminders: email }).eq('id', userId)
+export interface ReminderSettings {
+  reminder_days: number
+  email_reminders: boolean
+  reminder_time: string
+  reminder_tz: string
+  reminder_mode: ReminderMode
+  reminder_weekdays: number[]
+  reminder_dates: string[]
+}
+
+export async function updateReminderSettings(userId: string, settings: ReminderSettings): Promise<void> {
+  const { error } = await supabase.from('profiles').update(settings).eq('id', userId)
   if (error) fail(error)
 }
 

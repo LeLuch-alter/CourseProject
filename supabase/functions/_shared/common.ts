@@ -25,14 +25,26 @@ export async function userFrom(req: Request, db: SupabaseClient): Promise<{ id: 
   return { id: data.user.id }
 }
 
-export async function sendTelegram(chatId: number | string, text: string): Promise<boolean> {
+// Public address of the site for links in Telegram messages and e-mails.
+// The fallback keeps links working when the SITE_URL secret is missing or still holds the example value.
+export function siteUrl(): string {
+  const url = Deno.env.get('SITE_URL')?.trim() ?? ''
+  if (!url || url.includes('your-site')) return 'https://kvit-best-project.vercel.app'
+  return url.replace(/\/+$/, '')
+}
+
+// button: optional link button shown under the message
+export async function sendTelegram(chatId: number | string, text: string, button?: { text: string; url: string }): Promise<boolean> {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
   if (!token) return false
+  const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
+  if (button) body.reply_markup = { inline_keyboard: [[button]] }
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    body: JSON.stringify(body),
   })
+  if (!res.ok) console.error('Telegram sendMessage failed', res.status, await res.text())
   return res.ok
 }
 
