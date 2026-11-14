@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
 import { useToast } from '../lib/toast'
 import { formatMoney, sum } from '../lib/money'
-import { formatDate, todayIso } from '../lib/dates'
+import { addMonths, formatDate, todayIso } from '../lib/dates'
 import { deletePayment, syncStatus } from '../api/debts'
 import { remainingFor } from '../lib/calc'
 import { exportPaymentsCsv } from '../lib/csv'
@@ -29,11 +29,10 @@ export function PaymentsPage() {
 
   const rows = useMemo(() => {
     const today = todayIso()
-    const from = new Date(today + 'T00:00:00')
-    if (period === 'MONTH') from.setDate(1)
-    if (period === 'QUARTER') from.setMonth(from.getMonth() - 3)
-    if (period === 'YEAR') from.setFullYear(from.getFullYear() - 1)
-    const fromIso = from.toISOString().slice(0, 10)
+    let fromIso = today
+    if (period === 'MONTH') fromIso = today.slice(0, 8) + '01'
+    if (period === 'QUARTER') fromIso = addMonths(today, -3)
+    if (period === 'YEAR') fromIso = addMonths(today, -12)
     const s = q.trim().toLowerCase()
     return payments.filter((p) => {
       if (period !== 'ALL' && p.payment_date < fromIso) return false
@@ -43,7 +42,17 @@ export function PaymentsPage() {
     })
   }, [payments, byId, q, period])
 
-  const total = sum(rows.map((r) => r.amount))
+  // Different currencies are never added together, same rule as on the dashboard.
+  const byCurrency = useMemo(() => {
+    const groups: Record<string, Array<number | string>> = {}
+    for (const r of rows) {
+      const c = byId[r.debt_id]?.currency ?? 'KZT'
+      ;(groups[c] ??= []).push(r.amount)
+    }
+    return Object.entries(groups).sort(([a], [b]) => (a === 'KZT' ? -1 : b === 'KZT' ? 1 : a.localeCompare(b)))
+  }, [rows, byId])
+  const totalText = byCurrency.length ? byCurrency.map(([c, v]) => formatMoney(sum(v), locale, c)).join(' · ') : formatMoney(0, locale)
+  const averageText = byCurrency.length ? byCurrency.map(([c, v]) => formatMoney(Math.round((sum(v) / v.length) * 100) / 100, locale, c)).join(' · ') : formatMoney(0, locale)
   const target = payments.find((p) => p.id === deleting)
 
   async function doDelete() {
@@ -81,9 +90,9 @@ export function PaymentsPage() {
 
       <div className="grid gap-3 sm:grid-cols-3 mb-4">
         {[
-          { k: 'payments.total', v: formatMoney(total, locale) },
+          { k: 'payments.total', v: totalText },
           { k: 'payments.count', v: rows.length },
-          { k: 'payments.average', v: formatMoney(rows.length ? total / rows.length : 0, locale) },
+          { k: 'payments.average', v: averageText },
         ].map((s, i) => (
           <motion.div key={s.k} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card p-4">
             <div className="text-xs text-muted">{t(s.k)}</div>
@@ -147,7 +156,7 @@ export function PaymentsPage() {
                     <td className="td text-right num text-good">{formatMoney(p.amount, locale, byId[p.debt_id]?.currency)}</td>
                     <td className="td">
                       {!p.mirror_of && (
-                        <button className="opacity-0 group-hover:opacity-100 text-faint hover:text-bad transition" onClick={() => setDeleting(p.id)}>
+                        <button className="sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 text-faint hover:text-bad transition" onClick={() => setDeleting(p.id)} aria-label={t('common.delete')}>
                           <Trash2 size={15} />
                         </button>
                       )}
@@ -166,7 +175,7 @@ export function PaymentsPage() {
         onClose={() => setDeleting(null)}
         onConfirm={doDelete}
         title={t('payments.delete.title')}
-        text={t('payments.delete.text', formatMoney(target?.amount ?? 0, locale), formatDate(target?.payment_date, locale))}
+        text={t('payments.delete.text', formatMoney(target?.amount ?? 0, locale, target ? byId[target.debt_id]?.currency : undefined), formatDate(target?.payment_date, locale))}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
       />

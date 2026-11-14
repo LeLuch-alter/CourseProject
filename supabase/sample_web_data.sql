@@ -1,5 +1,6 @@
 -- =====================================================================
--- Kvit Web — two demo users with ready data (run AFTER schema_web_2.sql).
+-- Kvit Web — two demo users with ready data (run AFTER all schema files,
+-- including schema_web_5.sql).
 -- Logins:  aisha@kvit.demo / Kvit12345      daniyar@kvit.demo / Kvit12345
 -- Re-running deletes and recreates these two users together with their data.
 -- Works in the Supabase SQL Editor (runs as postgres, so RLS is bypassed).
@@ -15,6 +16,7 @@ declare
     a uuid := gen_random_uuid();   -- Aisha
     d uuid := gen_random_uuid();   -- Daniyar
     loan uuid := gen_random_uuid();
+    pending_loan uuid;
     receipt text;
     debt_a1 bigint; debt_a2 bigint; debt_d1 bigint; debt_d2 bigint;
     loan_debt_borrower bigint; loan_debt_lender bigint;
@@ -99,7 +101,8 @@ begin
 
     -- a second IOU waiting for Daniyar's confirmation: Aisha asks for 15 000
     insert into public.loans (lender_id, borrower_id, initiator_id, amount, purpose, due_date, borrower_card, status, created_at)
-    values (d, a, a, 15000, 'Такси и обед на конференции', current_date + 7, '4400430012345678', 'PENDING', now() - interval '1 hour');
+    values (d, a, a, 15000, 'Такси и обед на конференции', current_date + 7, '4400430012345678', 'PENDING', now() - interval '1 hour')
+    returning id into pending_loan;
 
     -- ------------------------------------------------------------ split bill: Aisha paid 36 000 for a gift
     insert into public.splits (payer_id, title, total, due_date, created_at) values (a, 'Подарок Алие на день рождения', 36000, current_date + 10, now() - interval '3 days')
@@ -126,8 +129,17 @@ begin
       (room, a, 'Скинулись по 18 000, записала в складчину', now() - interval '3 days'),
       (room, d, 'Ок, переведу до пятницы', now() - interval '2 days 20 hours');
 
-    -- demo notifications were created by triggers above; mark the old ones read
-    update public.notifications set read = true where user_id in (a, d) and created_at < now() - interval '1 day';
+    -- Demo notifications were created by the triggers above. They all carry
+    -- created_at = now() (the start of this transaction), so they cannot be told
+    -- apart by time. Mark everything read except the two things that are still
+    -- open in the story: Aisha's pending loan request for Daniyar and Daniyar's
+    -- last, unread message to Aisha.
+    update public.notifications n
+       set read = true
+     where n.user_id in (a, d)
+       and not (n.user_id = d and n.kind = 'loan_request' and n.link = '/loans/' || pending_loan)
+       and n.id <> coalesce((select max(m.id) from public.notifications m
+                             where m.user_id = a and m.kind = 'message'), -1);
 end $$;
 
 select u.email, p.username, p.display_name from auth.users u join public.profiles p on p.id = u.id

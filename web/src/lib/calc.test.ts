@@ -16,6 +16,7 @@ import {
   summarize,
   validateDebt,
   validatePayment,
+  isStrongPassword,
 } from './calc'
 
 const TODAY = '2026-10-15'
@@ -205,5 +206,24 @@ describe('validation', () => {
     expect(validatePayment(100, '2026-10-16', 400, 'ACTIVE', TODAY)).toEqual({ date: 'future' })
     expect(validatePayment(100, TODAY, 400, 'CANCELLED', TODAY)).toEqual({ form: 'cancelled' })
     expect(validatePayment(100, TODAY, 400, 'ACTIVE', TODAY)).toEqual({})
+  })
+})
+
+describe('password rule', () => {
+  it('needs 8+ characters with at least one letter and one digit', () => {
+    expect(isStrongPassword('abcdefg1')).toBe(true)
+    expect(isStrongPassword('пароль12')).toBe(true)
+    expect(isStrongPassword('12345678')).toBe(false)
+    expect(isStrongPassword('1234567!')).toBe(false)
+    expect(isStrongPassword('abcdefgh')).toBe(false)
+    expect(isStrongPassword('abc1')).toBe(false)
+  })
+})
+
+describe('3-month average', () => {
+  it('counts payments from the same day three months back, also at month ends', () => {
+    // 31 May - 3 months = 28 Feb, not 3 March
+    const ps = [pay(1, '300', '2026-02-28'), pay(1, '300', '2026-05-31')]
+    expect(averageMonthlyPayment(ps, '2026-05-31')).toBe(200)
   })
 })

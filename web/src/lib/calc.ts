@@ -2,7 +2,7 @@
 // Pure functions: no React, no Supabase, so they are easy to test.
 import type { Debt, Payment } from '../api/types'
 import { sum, toTiyn, fromTiyn } from './money'
-import { daysBetween, todayIso, monthsUntil, monthKey } from './dates'
+import { addMonths, daysBetween, todayIso, monthsUntil, monthKey } from './dates'
 
 export const ATTENTION_DAYS = 14
 
@@ -119,9 +119,7 @@ export function balanceWith(friendId: string, debts: Debt[], payments: Payment[]
 
 // Average paid per month over the last 3 months (0 when there were no payments).
 export function averageMonthlyPayment(payments: Payment[], today = todayIso()): number {
-  const from = new Date(today + 'T00:00:00')
-  from.setMonth(from.getMonth() - 3)
-  const fromIso = from.toISOString().slice(0, 10)
+  const fromIso = addMonths(today, -3)
   const recent = payments.filter((p) => p.payment_date >= fromIso && p.payment_date <= today)
   return fromTiyn(Math.round(toTiyn(sum(recent.map((p) => p.amount))) / 3))
 }
@@ -209,9 +207,7 @@ export function payoffPlan(debts: Debt[], payments: Payment[], budget: number, s
 
 // Forecast = remaining ÷ average monthly payment over the last 3 months, rounded up.
 export function forecastMonths(remaining: number, payments: Payment[], today = todayIso()): number | null {
-  const from = new Date(today + 'T00:00:00')
-  from.setMonth(from.getMonth() - 3)
-  const fromIso = from.toISOString().slice(0, 10)
+  const fromIso = addMonths(today, -3)
   const recent = payments.filter((p) => p.payment_date >= fromIso && p.payment_date <= today)
   if (recent.length === 0 || remaining <= 0) return null
   const avg = sum(recent.map((p) => p.amount)) / 3
@@ -261,4 +257,10 @@ export function validatePayment(amount: number | null, date: string, remaining: 
   if (!date) errors.date = 'required'
   else if (date > today) errors.date = 'future'
   return errors
+}
+
+// Same rule as the hint under the password field: 8+ characters,
+// at least one letter (any alphabet) and at least one digit.
+export function isStrongPassword(p: string): boolean {
+  return p.length >= 8 && /\p{L}/u.test(p) && /\d/.test(p)
 }

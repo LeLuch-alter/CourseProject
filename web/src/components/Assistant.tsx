@@ -7,7 +7,7 @@ import { useData } from '../lib/data'
 import { useAuth } from '../lib/auth'
 import { useToast } from '../lib/toast'
 import { supabase } from '../lib/supabase'
-import { formatMoney, parseAmount, CURRENCIES, type Currency } from '../lib/money'
+import { formatMoney, parseAmount, toTiyn, fromTiyn, CURRENCIES, type Currency } from '../lib/money'
 import { todayIso } from '../lib/dates'
 import { payoffPlan, remainingFor, validateDebt, validatePayment, type Strategy } from '../lib/calc'
 import { buildSnapshot, planForModel } from '../lib/assistantContext'
@@ -64,14 +64,26 @@ export function Assistant() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
+      // e.code is the physical key, so Ctrl+J also works with the Russian/Kazakh layout.
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyJ') {
         e.preventDefault()
         setOpen((v) => !v)
       }
+      // Esc closes the panel unless a dialog above it handles the key.
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[aria-modal="true"]')) setOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Stop the microphone and speech when the assistant is removed (for example on sign-out).
+  useEffect(
+    () => () => {
+      stopRef.current?.()
+      stopSpeaking()
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!open || !user) return
@@ -205,12 +217,11 @@ export function Assistant() {
         aria-label={t('ai.title')}
         title={`${t('ai.title')} (Ctrl+J)`}
       >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span key={open ? 'x' : 's'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-            {open ? <X size={22} /> : <Sparkles size={22} />}
-          </motion.span>
-        </AnimatePresence>
-        {!open && <span className="absolute inset-0 rounded-full border border-ink/40 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />}
+        {/* Enter-only animation: with mode="wait" a fast double click could leave the button without an icon. */}
+        <motion.span key={open ? 'x' : 's'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.15 }}>
+          {open ? <X size={22} /> : <Sparkles size={22} />}
+        </motion.span>
+        {!open && <span className="absolute inset-0 rounded-full border border-ink/40 motion-safe:animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />}
       </motion.button>
 
       <AnimatePresence>
@@ -244,6 +255,7 @@ export function Assistant() {
                     }
                   }}
                   title={tts ? t('ai.ttsOff') : t('ai.ttsOn')}
+                  aria-label={t('ai.ttsOn')}
                   aria-pressed={tts}
                 >
                   {tts ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -258,6 +270,7 @@ export function Assistant() {
                     stopSpeaking()
                   }}
                   title={t('ai.reset')}
+                  aria-label={t('ai.reset')}
                 >
                   <RotateCcw size={15} />
                 </button>
@@ -340,12 +353,14 @@ function DebtCard({ card, onChange }: { card: Extract<Card, { kind: 'debt' }>; o
   const { reload } = useData()
   const toast = useToast()
   const [d, setD] = useState(card.data)
+  // The amount stays as typed text; converting on every key press made "12." impossible to type.
+  const [amountText, setAmountText] = useState(String(card.data.amount || ''))
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const done = card.state !== 'pending'
 
   async function save() {
-    const amount = parseAmount(String(d.amount))
+    const amount = parseAmount(amountText)
     const errs = validateDebt({ title: d.title, creditor: d.counterparty, amount, dueDate: d.due_date, rate: '' })
     if (Object.keys(errs).length) {
       setErr(Object.values(errs).map((k) => t(`err.${k}`)).join('. '))
@@ -355,7 +370,7 @@ function DebtCard({ card, onChange }: { card: Extract<Card, { kind: 'debt' }>; o
     try {
       await createDebt({ title: d.title.trim(), creditor_name: d.counterparty.trim(), original_amount: amount!, interest_rate: null, due_date: d.due_date || null, status: 'ACTIVE', notes: d.notes.trim() || null, currency: d.currency, direction: d.direction })
       await reload()
-      onChange({ ...card, data: d, state: 'saved' })
+      onChange({ ...card, data: { ...d, amount: amount! }, state: 'saved' })
       toast.success(t('common.saved'), d.title)
     } catch (e) {
       setErr(e instanceof Error ? e.message : t('common.saveFailed'))
@@ -371,7 +386,7 @@ function DebtCard({ card, onChange }: { card: Extract<Card, { kind: 'debt' }>; o
         <input className="input h-9" value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} disabled={done} aria-label={t('form.title')} />
         <input className="input h-9" value={d.counterparty} onChange={(e) => setD({ ...d, counterparty: e.target.value })} disabled={done} aria-label={t('form.creditor')} />
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <input className="input h-9 num" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: Number(e.target.value.replace(',', '.')) || 0 })} disabled={done} aria-label={t('form.amount')} />
+          <input className="input h-9 num" inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} disabled={done} aria-label={t('form.amount')} />
           <span className="h-9 px-3 flex items-center border border-line rounded-lg font-mono text-xs">{d.currency}</span>
         </div>
         <input className="input h-9" type="date" value={d.due_date} onChange={(e) => setD({ ...d, due_date: e.target.value })} disabled={done} aria-label={t('form.dueDate')} />
@@ -394,6 +409,7 @@ function PaymentCard({ card, onChange }: { card: Extract<Card, { kind: 'payment'
   const { debts, payments, reload } = useData()
   const toast = useToast()
   const [p, setP] = useState(card.data)
+  const [amountText, setAmountText] = useState(String(card.data.amount || ''))
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const debt = debts.find((x) => x.id === p.debt_id)
@@ -405,7 +421,7 @@ function PaymentCard({ card, onChange }: { card: Extract<Card, { kind: 'payment'
       setErr(t('ai.noDebt'))
       return
     }
-    const amount = parseAmount(String(p.amount))
+    const amount = parseAmount(amountText)
     const errs = validatePayment(amount, p.payment_date, remaining, debt.status)
     if (Object.keys(errs).length) {
       setErr(Object.values(errs).map((k) => t(`err.${k}`)).join('. '))
@@ -414,9 +430,9 @@ function PaymentCard({ card, onChange }: { card: Extract<Card, { kind: 'payment'
     setSaving(true)
     try {
       await createPayment({ debt_id: debt.id, amount: amount!, payment_date: p.payment_date, notes: p.notes.trim() || null })
-      await syncStatus(debt, Math.max(0, Math.round((remaining - amount!) * 100) / 100))
+      await syncStatus(debt, fromTiyn(Math.max(0, toTiyn(remaining) - toTiyn(amount!))))
       await reload()
-      onChange({ ...card, data: p, state: 'saved' })
+      onChange({ ...card, data: { ...p, amount: amount! }, state: 'saved' })
       toast.success(t('common.saved'), formatMoney(amount!, locale, debt.currency))
     } catch (e) {
       setErr(e instanceof Error ? e.message : t('common.saveFailed'))
@@ -439,7 +455,7 @@ function PaymentCard({ card, onChange }: { card: Extract<Card, { kind: 'payment'
         <div className="text-bad text-xs mb-2">{t('ai.noDebt')}</div>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <input className="input h-9 num" inputMode="decimal" value={p.amount} onChange={(e) => setP({ ...p, amount: Number(e.target.value.replace(',', '.')) || 0 })} disabled={done} aria-label={t('form.amount')} />
+        <input className="input h-9 num" inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} disabled={done} aria-label={t('form.amount')} />
         <input className="input h-9" type="date" max={todayIso()} value={p.payment_date} onChange={(e) => setP({ ...p, payment_date: e.target.value })} disabled={done} aria-label={t('form.date')} />
       </div>
       {err && <div className="text-xs text-bad mt-2">{err}</div>}
@@ -475,7 +491,13 @@ function MessageCard({ draft, friends, onClose }: { draft: MessageDraft; friends
             {t('ai.openChat')}
           </button>
         )}
-        <button className="btn-outline h-9 flex-1" onClick={() => void navigator.clipboard.writeText(draft.text).then(() => toast.success(t('common.copied')))}>
+        <button className="btn-outline h-9 flex-1" onClick={() =>
+            navigator.clipboard.writeText(draft.text).then(
+              () => toast.success(t('common.copied')),
+              () => toast.error(t('common.copyFailed')),
+            )
+          }
+        >
           <Copy size={15} />
           {t('common.copy')}
         </button>

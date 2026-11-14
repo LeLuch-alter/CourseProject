@@ -1,6 +1,9 @@
 -- =====================================================================
 -- Kvit Web, part 2 (run AFTER schema_web.sql, re-runnable):
 -- reminders, installment schedules, split bills, group chats.
+-- NOTE: schema_web_5.sql replaces several grants, policies and functions
+-- defined in the web scripts with fixed versions. Run it after the last
+-- schema_web file and again whenever you re-run this file.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

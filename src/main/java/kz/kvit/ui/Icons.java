@@ -37,6 +37,11 @@ public final class Icons {
     public static final String EYE = "\uE890";
     public static final String EYE_OFF = "\uED1A";
     public static final String CALCULATOR = "\uE8EF";
+    public static final String BELL = "\uEA8F";
+    public static final String PEOPLE = "\uE716";
+    public static final String DOCUMENT = "\uE8A5";
+    public static final String ARROW_UP_RIGHT = "\uE8A7";
+    public static final String MORE = "\uE712";
 
     private Icons() {
     }

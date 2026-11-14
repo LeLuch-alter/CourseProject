@@ -77,7 +77,7 @@ public class ModalHost extends StackPane {
 
     /** Small message in the bottom-right corner that disappears by itself. */
     public void toast(String message, boolean error) {
-        Label text = Ui.label(message, "ledger-title");
+        Label text = Ui.wrapped(message, "ledger-title");
         HBox toast = new HBox(10, Icons.create(error ? Icons.ERROR : Icons.CHECK, 15), text);
         toast.setAlignment(Pos.CENTER_LEFT);
         toast.getStyleClass().add("toast");
@@ -97,19 +97,17 @@ public class ModalHost extends StackPane {
 
     /** Standard dialog card: title, content, and a row of buttons. */
     public static VBox dialogCard(String title, Node content, Button... buttons) {
-        Button close = new Button(null, Icons.create(Icons.CLOSE, 12));
-        close.getStyleClass().addAll("quiet", "icon-button");
-        Ui.tooltip(close, I18n.t("common.close") + " (Esc)");
+        Button close = Ui.iconButton(Icons.CLOSE, I18n.t("common.close") + " (Esc)");
 
-        HBox header = new HBox(12, Ui.label(title, "auth-title"), Ui.hSpacer(), close);
+        HBox header = new HBox(12, Ui.label(title, "modal-title"), Ui.hSpacer(), close);
         header.setAlignment(Pos.CENTER_LEFT);
 
         HBox actions = new HBox(10, buttons);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
-        VBox card = new VBox(20, header, content, actions);
+        VBox card = new VBox(18, header, content, actions);
         card.getStyleClass().add("modal-card");
-        card.setPadding(new Insets(26, 28, 24, 28));
+        card.setPadding(new Insets(18, 20, 20, 24));
         card.setPrefWidth(480);
         card.setUserData(close);
         return card;
@@ -126,6 +124,7 @@ public class ModalHost extends StackPane {
     /** Yes/no question; onConfirm runs only after the user agrees. */
     public void confirm(String title, String message, String confirmText, boolean dangerous, Runnable onConfirm) {
         Button cancel = new Button(I18n.t("common.cancel"));
+        cancel.getStyleClass().add("quiet");
         cancel.setCancelButton(true);
         Button confirm = new Button(confirmText);
         confirm.getStyleClass().add(dangerous ? "danger-button" : "cta");

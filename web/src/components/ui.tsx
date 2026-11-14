@@ -1,29 +1,85 @@
-import { useEffect, type ReactNode } from 'react'
+import { Children, cloneElement, isValidElement, useEffect, useId, useRef, type ReactElement, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, Inbox } from 'lucide-react'
 import type { Profile } from '../api/types'
+import { useI18n } from '../lib/i18n'
+import { FieldContext } from './fieldContext'
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// Open modals, newest last. Only the top one reacts to Esc and Tab, so closing a
+// confirmation opened above a form does not close the form too.
+const openModals: object[] = []
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title?: string; children: ReactNode; wide?: boolean }) {
+  const { t } = useI18n()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  // Callers usually pass a new arrow function on every render; a ref keeps the effect from re-running.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
   useEffect(() => {
     if (!open) return
+    const token = {}
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    openModals.push(token)
+    document.body.style.overflow = 'hidden'
+    const isTop = () => openModals[openModals.length - 1] === token
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (!isTop()) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      const dialog = dialogRef.current
+      if (e.key !== 'Tab' || !dialog) return
+      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null)
+      if (items.length === 0) {
+        e.preventDefault()
+        dialog.focus()
+        return
+      }
+      const first = items[0],
+        last = items[items.length - 1]
+      const inside = dialog.contains(document.activeElement)
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    // Move focus into the dialog unless a field inside already took it with autoFocus.
+    const frame = requestAnimationFrame(() => {
+      const dialog = dialogRef.current
+      if (dialog && !dialog.contains(document.activeElement)) (dialog.querySelector<HTMLElement>(FOCUSABLE) ?? dialog).focus()
+    })
     return () => {
+      cancelAnimationFrame(frame)
       window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      openModals.splice(openModals.indexOf(token), 1)
+      if (openModals.length === 0) document.body.style.overflow = ''
+      if (previousFocus?.isConnected) previousFocus.focus()
     }
-  }, [open, onClose])
+  }, [open])
   return (
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
             initial={{ y: 40, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 30, opacity: 0, scale: 0.98 }}
@@ -32,8 +88,10 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
           >
             {title && (
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                <h2 className="text-lg">{title}</h2>
-                <button className="btn-icon btn-ghost h-9 w-9" onClick={onClose} aria-label="Close">
+                <h2 id={titleId} className="text-lg">
+                  {title}
+                </h2>
+                <button className="btn-icon btn-ghost h-9 w-9" onClick={onClose} aria-label={t('common.close')}>
                   <X size={18} />
                 </button>
               </div>
@@ -80,14 +138,46 @@ export function Confirm({
   )
 }
 
+const NATIVE_CONTROLS = ['input', 'textarea', 'select']
+
+// Gives the first native input/textarea/select inside plain DOM wrappers the label's id,
+// so clicking the label focuses it and screen readers read the label, hint and error.
+function linkFirstControl(node: ReactNode, props: Record<string, unknown>, state = { done: false }): ReactNode {
+  return Children.map(node, (child) => {
+    if (state.done || !isValidElement(child) || typeof child.type !== 'string') return child
+    const el = child as ReactElement<Record<string, unknown> & { children?: ReactNode }>
+    if (NATIVE_CONTROLS.includes(el.type as string)) {
+      state.done = true
+      return el.props.id ? el : cloneElement(el, props)
+    }
+    if (el.props.children === undefined) return el
+    return cloneElement(el, undefined, linkFirstControl(el.props.children, props, state))
+  })
+}
+
 export function Field({ label, error, hint, children, optional }: { label: string; error?: string; hint?: string; children: ReactNode; optional?: string }) {
+  const id = useId()
+  const noteId = `${id}-note`
+  const describedBy = error || hint ? noteId : undefined
+  const controlProps = { id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined }
+  const linked = { done: false }
+  const content = linkFirstControl(children, controlProps, linked)
   return (
     <div>
-      <label className="label">
+      <label className="label" htmlFor={id}>
         {label} {optional && <span className="normal-case tracking-normal text-faint">· {optional}</span>}
       </label>
-      {children}
-      {error ? <div className="text-xs text-bad mt-1.5">{error}</div> : hint ? <div className="text-xs text-faint mt-1.5">{hint}</div> : null}
+      {/* A custom control (Select) takes the id only when no native field already has it. */}
+      <FieldContext.Provider value={linked.done ? null : { id, describedBy, invalid: !!error }}>{content}</FieldContext.Provider>
+      {error ? (
+        <div id={noteId} className="text-xs text-bad mt-1.5" role="alert">
+          {error}
+        </div>
+      ) : hint ? (
+        <div id={noteId} className="text-xs text-faint mt-1.5">
+          {hint}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -190,11 +280,12 @@ export function Avatar({ profile, size = 36, className = '' }: { profile: Pick<P
   )
 }
 
-export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: Array<{ value: T; label: ReactNode }> }) {
+// value may be null when the current state matches none of the options (nothing is highlighted).
+export function Segmented<T extends string>({ value, onChange, options }: { value: T | null; onChange: (v: T) => void; options: Array<{ value: T; label: ReactNode }> }) {
   return (
     <div className="inline-flex p-0.5 rounded-lg border border-line gap-0.5">
       {options.map((o) => (
-        <button key={o.value} onClick={() => onChange(o.value)} className={`relative h-8 px-3 rounded text-sm transition ${value === o.value ? 'text-bg' : 'text-muted hover:text-ink'}`}>
+        <button key={o.value} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={`relative h-8 px-3 rounded text-sm transition ${value === o.value ? 'text-bg' : 'text-muted hover:text-ink'}`}>
           {value === o.value && (
             <motion.span layoutId={`seg-${options.map((x) => x.value).join('')}`} className="absolute inset-0 rounded bg-ink" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
           )}

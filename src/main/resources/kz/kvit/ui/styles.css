@@ -1,277 +1,307 @@
 /*
- * Kvit design system. Calm, neutral graphite in the dark theme and soft gray-white in the light theme;
- * flat surfaces with thin borders, no glows. Based on DESIGN.md, toned down for an everyday tool.
- * Every color is a token defined on .root; theme-light.css redefines the same tokens.
- * Screens use only the tokens, never raw color values, so both themes stay consistent.
- * The violet accent is used ONLY for primary submit buttons (sign in, save).
+ * Kvit design system, matched to the web app (web/src/index.css):
+ * near-black canvas, chalk-white type, 1px hairline borders, flat cards, no glows.
+ * White pill = the main action of a screen; outlined buttons for everything else.
+ * Small uppercase monospace labels ("eyebrows") name sections, fields and table columns.
+ *
+ * Every color is a token on .root. theme-light.css redefines the BASE tokens only
+ * (first block); the other tokens are built from them, so both themes stay consistent.
+ * Screens use tokens only, never raw color values.
  */
 
-/* ============================================================ Tokens: dark (default) */
+/* ============================================================ Base tokens: dark (default) */
 
 .root {
-    -canvas: #18181a;
-    -surface-deep: #222224;
-    -surface-mini: #26262a;
-    -surface-popup: #2a2a2e;
-    -text-strong: #f2f2f3;
-    -text: #dcdcde;
-    -text-muted: #b4b4b8;
-    -text-helper: #8e8e93;
-    -text-input: #f2f2f3;
-    -text-on-accent: #ffffff;
-    -display-gradient: #f2f2f3;
-    -meter-gradient: #c9c9cd;
-    -bar-fill: #8e8e96;
-    -bar-fill-hover: #d4d4d8;
+    -bg: #101010;            /* window canvas */
+    -surface: #080808;       /* cards, dialogs */
+    -raised: #1a1a1a;        /* hover, inner boxes, selected rows */
+    -line: #212121;          /* hairline borders */
+    -line-strong: #333333;
+    -ink: #f3f3f3;           /* main text, primary button */
+    -ink-hover: #dcdcdc;
+    -muted: #9c9c9c;         /* secondary text */
+    -faint: #646464;         /* hints, placeholders */
+    -accent2: #8a8170;       /* warm taupe: active nav icon, "active" status dot */
+    -good: #98ff38;
+    -warn: #e6b43c;
+    -bad: #ff6060;
 
-    -accent: #6a4ee0;
-    -accent-hover: #7a60e8;
-    -accent-pressed: #5a3fcc;
+    -wash: rgba(243, 243, 243, 0.04);
+    -wash-hover: rgba(243, 243, 243, 0.07);
+    -wash-pressed: rgba(243, 243, 243, 0.11);
+    -edge-button: rgba(243, 243, 243, 0.55);
+    -edge-focus: rgba(243, 243, 243, 0.60);
+    -bad-wash: rgba(255, 96, 96, 0.10);
+    -bad-edge: rgba(255, 96, 96, 0.50);
+    -good-wash: rgba(152, 255, 56, 0.08);
+    -good-edge: rgba(152, 255, 56, 0.40);
+    -warn-wash: rgba(230, 180, 60, 0.10);
+    -bar-fill: #6e6e6e;
+    -shadow: rgba(0, 0, 0, 0.60);
+    -backdrop: rgba(0, 0, 0, 0.60);
+    -topbar-bg: rgba(16, 16, 16, 0.92);
+    -avatar-bg: #57524c;
 
-    -danger: #e5735a;
-    -success: #4cb09a;
-    -info: #9fb4cc;
-    -neutral: #6e6e74;
-    -danger-wash: rgba(229, 115, 90, 0.13);
-    -danger-edge: rgba(229, 115, 90, 0.40);
-    -success-wash: rgba(76, 176, 154, 0.13);
-    -success-edge: rgba(76, 176, 154, 0.40);
-    -info-wash: rgba(159, 180, 204, 0.13);
+    /* Modena base, so built-in parts (scroll bars, popups, check boxes) follow the theme */
+    -fx-base: #1a1a1a;
+    -fx-control-inner-background: #080808;
+    -fx-control-inner-background-alt: #080808;
+}
 
-    -edge: rgba(255, 255, 255, 0.08);
-    -edge-strong: rgba(255, 255, 255, 0.16);
-    -edge-focus: rgba(255, 255, 255, 0.45);
-    -wash: rgba(255, 255, 255, 0.05);
-    -wash-hover: rgba(255, 255, 255, 0.09);
-    -wash-pressed: rgba(255, 255, 255, 0.14);
-    -glass-top: #202022;
-    -glass-bottom: #202022;
-    -highlight-edge: rgba(255, 255, 255, 0.06);
-    -inner-glow: transparent;
-    -halo: rgba(0, 0, 0, 0.35);
-    -input-bg: rgba(255, 255, 255, 0.04);
-    -input-bg-focus: rgba(255, 255, 255, 0.07);
-    -prompt: rgba(255, 255, 255, 0.35);
-    -track: rgba(255, 255, 255, 0.08);
-    -chip-bg: #26262a;
-    -topbar-bg: #1c1c1e;
-    -backdrop: rgba(0, 0, 0, 0.55);
-    -row-hover: rgba(255, 255, 255, 0.035);
-    -row-selected: rgba(255, 255, 255, 0.08);
+/* ============================================================ Derived tokens (same in both themes) */
 
-    /* Modena base, so built-in parts (scroll bars, popups) follow the theme */
-    -fx-base: #2a2a2e;
-    -fx-background: -canvas;
-    -fx-control-inner-background: #222224;
-    -fx-control-inner-background-alt: #222224;
-    -fx-accent: -accent;
+.root {
+    -fx-background: -bg;
+    -fx-accent: -ink;
     -fx-focus-color: -edge-focus;
     -fx-faint-focus-color: transparent;
-    -fx-text-base-color: -text;
-    -fx-text-background-color: -text;
-    -fx-selection-bar: -row-selected;
-    -fx-selection-bar-non-focused: -row-selected;
-    -fx-selection-bar-text: -text-strong;
+    -fx-text-base-color: -ink;
+    -fx-text-background-color: -ink;
+    -fx-selection-bar: -raised;
+    -fx-selection-bar-non-focused: -raised;
+    -fx-selection-bar-text: -ink;
 
     -fx-font-family: "Segoe UI";
     -fx-font-size: 14px;
-    -fx-background-color: -canvas;
+    -fx-background-color: -bg;
 }
 
 /* ============================================================ Typography */
 
 .label {
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
 }
 
+/* Huge light wordmark/headline (login) */
 .display {
-    -fx-font-family: "Segoe UI Semibold";
-    -fx-font-size: 48px;
-    -fx-text-fill: -display-gradient;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 36px;
+    -fx-text-fill: -ink;
 }
 
 .heading {
-    -fx-font-family: "Segoe UI Semilight";
-    -fx-font-size: 28px;
-    -fx-text-fill: -text-strong;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 30px;
+    -fx-text-fill: -ink;
 }
 
 .heading-sm {
     -fx-font-family: "Segoe UI Semibold";
-    -fx-font-size: 17px;
-    -fx-text-fill: -text-strong;
+    -fx-font-size: 16px;
+    -fx-text-fill: -ink;
 }
 
 .body-muted {
-    -fx-text-fill: -text-muted;
-    -fx-font-size: 15px;
+    -fx-text-fill: -muted;
+    -fx-font-size: 14px;
 }
 
 .helper {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
     -fx-font-size: 12px;
 }
 
-.field-label {
-    -fx-text-fill: -text-muted;
-    -fx-font-size: 13px;
+.faint {
+    -fx-text-fill: -faint;
 }
 
-/* Tracked all-caps marker; letter spacing is added in code (JavaFX CSS has none). */
-.eyebrow {
-    -fx-font-family: "Segoe UI Semibold";
+/* Field captions: small mono caps like the web ".label". Ui.field() upper-cases the text. */
+.field-label {
+    -fx-font-family: "Consolas";
     -fx-font-size: 11px;
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
+}
+
+/* Section marker; Ui.eyebrow() upper-cases the text. JavaFX CSS has no letter-spacing, the mono font gives the same feel. */
+.eyebrow {
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
+    -fx-text-fill: -muted;
+}
+
+.mono {
+    -fx-font-family: "Consolas";
 }
 
 .icon {
     -fx-font-family: "Segoe Fluent Icons";
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
 }
 
 .text-danger, .icon.text-danger, .stat-value.text-danger, .ledger-amount.text-danger {
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
 .text-success, .icon.text-success, .ledger-amount.text-success, .stat-value.text-success {
-    -fx-text-fill: -success;
+    -fx-text-fill: -good;
+}
+
+.text-warn, .icon.text-warn {
+    -fx-text-fill: -warn;
 }
 
 .brand-name {
-    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-family: "Segoe UI";
     -fx-font-size: 17px;
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
 }
 
 .brand-monogram {
     -fx-font-family: "Segoe UI Semibold";
-    -fx-text-fill: -text-on-accent;
+    -fx-text-fill: -bg;
 }
 
 /* ============================================================ Surfaces */
 
-.glass-panel {
-    -fx-background-color: linear-gradient(to bottom, -glass-top, -glass-bottom);
-    -fx-background-radius: 16;
-    -fx-border-color: -edge;
-    -fx-border-radius: 16;
+/* Standard card (the web ".card"): flat surface, hairline border, 8px corners. */
+.glass-panel, .card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
 }
 
-/* Nearly opaque "deep glass": frost highlight on the top edge + inner glow + dark halo. */
 .modal-card {
-    -fx-background-color: -highlight-edge, -surface-deep, linear-gradient(to bottom, -inner-glow 0%, transparent 45%);
-    -fx-background-insets: 0, 1 0 0 0, 1 0 0 0;
-    -fx-background-radius: 16;
-    -fx-border-color: -edge;
-    -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, -halo, 28, 0, 0, 10);
+    -fx-background-color: -surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, -shadow, 40, 0, 0, 16);
 }
 
+/* Inner box inside a card (e.g. "Due date" tile in debt details) */
 .mini-card {
-    -fx-background-color: -highlight-edge, -surface-mini, linear-gradient(to bottom, -inner-glow 0%, transparent 60%);
-    -fx-background-insets: 0, 1 0 0 0, 1 0 0 0;
-    -fx-background-radius: 14;
-    -fx-border-color: -edge;
-    -fx-border-radius: 14;
-    -fx-effect: dropshadow(gaussian, -halo, 16, 0, 0, 6);
+    -fx-background-color: -raised;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
 }
 
 .icon-tile {
-    -fx-background-color: -wash;
-    -fx-background-radius: 999;
-    -fx-border-color: -edge;
-    -fx-border-radius: 999;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
     -fx-alignment: center;
 }
 
+.icon-tile .icon {
+    -fx-text-fill: -muted;
+}
+
 .brand-mark {
-    -fx-background-color: -accent;
+    -fx-background-color: -ink;
     -fx-background-radius: 8;
     -fx-alignment: center;
 }
 
+/* Badge / status chip (the web ".chip"): outlined, mono caps, optional colored dot. */
 .badge {
-    -fx-background-color: -wash-hover;
-    -fx-background-radius: 6;
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 4;
     -fx-padding: 3 8 3 8;
-    -fx-font-size: 12px;
-    -fx-text-fill: -text;
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
+    -fx-text-fill: -muted;
+    -fx-graphic-text-gap: 6;
 }
 
 .badge.danger {
-    -fx-background-color: -danger-wash;
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
 .badge.success {
-    -fx-background-color: -success-wash;
-    -fx-text-fill: -success;
+    -fx-text-fill: -good;
 }
 
 .badge.info {
-    -fx-background-color: -info-wash;
-    -fx-text-fill: -info;
+    -fx-text-fill: -ink;
 }
 
 .badge.muted {
-    -fx-background-color: -wash;
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -faint;
+}
+
+/* Status chips from Ui.statusBadge: the dot carries the color, the text stays calm. */
+.badge.status-chip {
+    -fx-text-fill: -muted;
 }
 
 .chip {
-    -fx-background-color: -chip-bg;
-    -fx-background-radius: 999;
-    -fx-border-color: -edge-strong;
-    -fx-border-radius: 999;
-    -fx-padding: 6 12 6 10;
+    -fx-background-color: -surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 6;
+    -fx-padding: 5 10 5 10;
 }
 
 .skeleton {
-    -fx-background-color: -wash;
+    -fx-background-color: -raised;
     -fx-background-radius: 8;
 }
 
 .hairline {
-    -fx-background-color: -edge;
+    -fx-background-color: -line;
     -fx-pref-height: 1px;
+    -fx-min-height: 1px;
     -fx-max-height: 1px;
 }
 
 .vertical-hairline {
-    -fx-background-color: -edge;
+    -fx-background-color: -line;
     -fx-pref-width: 1px;
     -fx-min-width: 1px;
     -fx-max-width: 1px;
 }
 
 .status-dot {
-    -fx-fill: -neutral;
+    -fx-fill: -faint;
 }
 
-.status-dot.active {
-    -fx-fill: -info;
+.status-dot.active, .status-dot.info {
+    -fx-fill: -accent2;
 }
 
 .status-dot.danger {
-    -fx-fill: -danger;
+    -fx-fill: -bad;
 }
 
 .status-dot.success {
-    -fx-fill: -success;
+    -fx-fill: -good;
+}
+
+.status-dot.warn {
+    -fx-fill: -warn;
+}
+
+/* Initials avatar in the top bar */
+.avatar {
+    -fx-background-color: -avatar-bg;
+    -fx-background-radius: 999;
+    -fx-alignment: center;
+}
+
+.avatar .label {
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #ffffff;
 }
 
 /* ============================================================ Buttons */
 
+/* Default button = outlined (the web ".btn-outline"). */
 .button, .toggle-button {
-    -fx-background-color: -wash;
-    -fx-background-radius: 999;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
     -fx-background-insets: 0;
-    -fx-border-color: -edge;
-    -fx-border-radius: 999;
-    -fx-text-fill: -text-strong;
+    -fx-border-color: -edge-button;
+    -fx-border-radius: 8;
+    -fx-text-fill: -ink;
     -fx-font-family: "Segoe UI Semibold";
     -fx-font-size: 13px;
-    -fx-padding: 7 16 7 16;
+    -fx-padding: 8 16 8 16;
+    -fx-graphic-text-gap: 8;
     -fx-cursor: hand;
 }
 
@@ -284,195 +314,241 @@
 }
 
 .button:focused, .toggle-button:focused {
-    -fx-border-color: -edge-focus;
+    -fx-border-color: -ink;
 }
 
 .button:disabled, .toggle-button:disabled {
-    -fx-opacity: 0.45;
+    -fx-opacity: 0.4;
 }
 
 .button .icon, .toggle-button .icon {
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
 }
 
-/* Violet: only for the main submit action of a form. */
-.button.cta {
-    -fx-background-color: -accent;
-    -fx-background-radius: 6;
-    -fx-border-color: rgba(255, 255, 255, 0.16);
-    -fx-border-radius: 6;
-    -fx-text-fill: -text-on-accent;
-    -fx-font-size: 14px;
-    -fx-padding: 11 24 11 24;
-}
-
-.button.cta .icon, .button.cta .progress-indicator {
-    -fx-text-fill: -text-on-accent;
-    -fx-progress-color: -text-on-accent;
-}
-
-.button.cta:hover {
-    -fx-background-color: -accent-hover;
-}
-
-.button.cta:pressed {
-    -fx-background-color: -accent-pressed;
-}
-
-.button.cta:focused {
-    -fx-border-color: rgba(255, 255, 255, 0.75);
-}
-
-.button.cta:disabled {
-    -fx-opacity: 0.7;
-}
-
-.button.quiet {
-    -fx-background-color: transparent;
+/* Primary action: white pill with dark text (the web ".btn-primary"). */
+.button.cta, .button.primary {
+    -fx-background-color: -ink;
+    -fx-background-radius: 999;
     -fx-border-color: transparent;
-    -fx-text-fill: -text-muted;
+    -fx-border-radius: 999;
+    -fx-text-fill: -bg;
+    -fx-padding: 9 20 9 20;
 }
 
-.button.quiet:hover {
-    -fx-background-color: -wash;
-    -fx-text-fill: -text-strong;
+.button.cta .icon, .button.primary .icon,
+.button.cta .progress-indicator, .button.primary .progress-indicator {
+    -fx-text-fill: -bg;
+    -fx-progress-color: -bg;
 }
 
-.button.quiet:focused {
+.button.cta:hover, .button.primary:hover {
+    -fx-background-color: -ink-hover;
+}
+
+.button.cta:pressed, .button.primary:pressed {
+    -fx-background-color: -muted;
+}
+
+.button.cta:focused, .button.primary:focused {
     -fx-border-color: -edge-focus;
 }
 
+.button.cta:disabled, .button.primary:disabled {
+    -fx-opacity: 0.6;
+}
+
+/* Ghost button (the web ".btn-ghost"): no border, muted until hovered. */
+.button.quiet, .toggle-button.quiet {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -muted;
+}
+
+.button.quiet .icon, .toggle-button.quiet .icon {
+    -fx-text-fill: -muted;
+}
+
+.button.quiet:hover, .toggle-button.quiet:hover {
+    -fx-background-color: -raised;
+    -fx-text-fill: -ink;
+}
+
+.button.quiet:hover .icon, .toggle-button.quiet:hover .icon {
+    -fx-text-fill: -ink;
+}
+
+.button.quiet:focused, .toggle-button.quiet:focused {
+    -fx-border-color: -edge-focus;
+}
+
+/* Text-only link inside sentences (login "Create account"). */
+.button.link {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 2 0 2 0;
+    -fx-text-fill: -ink;
+}
+
+.button.link:hover {
+    -fx-underline: true;
+}
+
 .button.danger-button {
-    -fx-background-color: -danger-wash;
-    -fx-border-color: -danger-edge;
-    -fx-text-fill: -danger;
+    -fx-background-color: transparent;
+    -fx-border-color: -bad-edge;
+    -fx-text-fill: -bad;
 }
 
 .button.danger-button .icon {
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
 .button.danger-button:hover {
-    -fx-background-color: -danger-edge;
+    -fx-background-color: -bad-wash;
 }
 
-.button.icon-button {
-    -fx-padding: 7;
-    -fx-min-width: 32;
-    -fx-min-height: 32;
+.button.icon-button, .toggle-button.icon-button {
+    -fx-padding: 8;
+    -fx-min-width: 36;
+    -fx-min-height: 36;
 }
 
-/* Auth mode switch (Вход / Регистрация): text tabs with an underline. */
-.mode-tab {
-    -fx-background-color: transparent;
-    -fx-background-radius: 0;
-    -fx-border-color: transparent transparent -edge transparent;
-    -fx-border-width: 0 0 2 0;
-    -fx-border-radius: 0;
-    -fx-text-fill: -text-helper;
-    -fx-font-size: 14px;
-    -fx-padding: 6 2 8 2;
+.toggle-button.icon-button:selected {
+    -fx-background-color: -raised;
 }
 
-.mode-tab:hover {
-    -fx-background-color: transparent;
-    -fx-text-fill: -text-muted;
-}
-
-.mode-tab:selected {
-    -fx-background-color: transparent;
-    -fx-text-fill: -text-strong;
-    -fx-border-color: transparent transparent -text transparent;
-}
-
-.mode-tab:focused {
-    -fx-border-color: transparent transparent -edge-focus transparent;
-}
-
-/* Filter chips (Все / Активные / ...) */
+/* Filter chips (All / Active / Overdue ...): selected one is filled like the web segmented control. */
 .filter-chip {
     -fx-background-color: transparent;
-    -fx-text-fill: -text-muted;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6;
+    -fx-text-fill: -muted;
     -fx-font-family: "Segoe UI";
-    -fx-padding: 5 12 5 12;
+    -fx-font-size: 14px;
+    -fx-padding: 6 12 6 12;
 }
 
 .filter-chip:hover {
-    -fx-background-color: -wash;
+    -fx-background-color: transparent;
+    -fx-text-fill: -ink;
 }
 
-.filter-chip:selected {
-    -fx-background-color: -wash-hover;
-    -fx-border-color: -edge-strong;
-    -fx-text-fill: -text-strong;
+.filter-chip:selected, .filter-chip:selected:hover {
+    -fx-background-color: -ink;
+    -fx-text-fill: -bg;
 }
 
-/* Segmented control (theme / language): a pill with plain segments, no sliding thumb. */
+.filter-chip:focused {
+    -fx-border-color: -edge-focus;
+}
+
+/* Segmented control (theme, language, periods): bordered group, the selected segment is filled. */
 .segmented {
-    -fx-background-color: -wash;
-    -fx-background-radius: 999;
-    -fx-border-color: -edge;
-    -fx-border-radius: 999;
-    -fx-padding: 3;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
+    -fx-padding: 2;
     -fx-spacing: 2;
 }
 
 .segment {
     -fx-background-color: transparent;
+    -fx-background-radius: 6;
     -fx-border-color: transparent;
-    -fx-text-fill: -text-helper;
-    -fx-font-family: "Segoe UI Semibold";
-    -fx-font-size: 12px;
-    -fx-padding: 4 10 4 10;
+    -fx-border-radius: 6;
+    -fx-text-fill: -muted;
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
+    -fx-padding: 6 10 6 10;
 }
 
 .segment .icon {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
 }
 
 .segment:hover {
-    -fx-background-color: -wash;
+    -fx-background-color: transparent;
+    -fx-text-fill: -ink;
 }
 
-.segment:selected {
-    -fx-background-color: -wash-pressed;
-    -fx-text-fill: -text-strong;
+.segment:selected, .segment:selected:hover {
+    -fx-background-color: -ink;
+    -fx-text-fill: -bg;
 }
 
 .segment:selected .icon {
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -bg;
 }
 
 .segment:focused {
     -fx-border-color: -edge-focus;
 }
 
-/* ============================================================ Navigation */
+/* ============================================================ Shell: sidebar and top bar */
 
-.top-bar {
+.sidebar {
     -fx-background-color: -topbar-bg;
-    -fx-border-color: transparent transparent -edge transparent;
-    -fx-padding: 10 20 10 16;
+    -fx-border-color: transparent -line transparent transparent;
+    -fx-pref-width: 240;
+    -fx-min-width: 240;
+}
+
+.sidebar.compact {
+    -fx-pref-width: 68;
+    -fx-min-width: 68;
+}
+
+.sidebar.compact .sidebar-brand {
+    -fx-alignment: center;
+}
+
+.sidebar.compact .nav-item {
+    -fx-alignment: center;
+}
+
+.sidebar-brand {
+    -fx-alignment: center-left;
+    -fx-padding: 0 16 0 16;
+    -fx-min-height: 64;
+    -fx-pref-height: 64;
+}
+
+.sidebar-nav {
+    -fx-padding: 8 12 8 12;
+    -fx-spacing: 2;
+}
+
+.sidebar-footer {
+    -fx-border-color: -line transparent transparent transparent;
+    -fx-padding: 12;
 }
 
 .nav-item {
     -fx-background-color: transparent;
+    -fx-background-radius: 8;
     -fx-border-color: transparent;
-    -fx-text-fill: -text-muted;
+    -fx-border-radius: 8;
+    -fx-text-fill: -muted;
     -fx-font-family: "Segoe UI";
     -fx-font-size: 14px;
-    -fx-padding: 6 14 6 12;
+    -fx-padding: 9 12 9 12;
+    -fx-graphic-text-gap: 12;
+    -fx-alignment: center-left;
+    -fx-max-width: infinity;
 }
 
 .nav-item:hover {
-    -fx-background-color: -wash;
-    -fx-text-fill: -text-strong;
+    -fx-background-color: -raised;
+    -fx-text-fill: -ink;
 }
 
-.nav-item:selected {
-    -fx-background-color: -wash-hover;
-    -fx-border-color: -edge;
-    -fx-text-fill: -text-strong;
+.nav-item:selected, .nav-item:selected:hover {
+    -fx-background-color: -raised;
+    -fx-border-color: -line-strong;
+    -fx-text-fill: -ink;
+    -fx-font-family: "Segoe UI Semibold";
 }
 
 .nav-item:focused {
@@ -480,38 +556,83 @@
 }
 
 .nav-item .icon {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
 }
 
-.nav-item:selected .icon, .nav-item:hover .icon {
-    -fx-text-fill: -text;
+.nav-item:hover .icon {
+    -fx-text-fill: -ink;
 }
 
-.user-chip {
-    -fx-background-color: -wash;
-    -fx-background-radius: 999;
-    -fx-border-color: -edge;
-    -fx-border-radius: 999;
-    -fx-padding: 5 12 5 8;
+.nav-item:selected .icon {
+    -fx-text-fill: -accent2;
+}
+
+.top-bar {
+    -fx-background-color: -topbar-bg;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-padding: 0 24 0 24;
+    -fx-min-height: 64;
+    -fx-pref-height: 64;
+    -fx-spacing: 8;
+}
+
+/* Search launcher in the top bar (looks like a field, works like a button) */
+.top-search {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
+    -fx-padding: 7 8 7 12;
+    -fx-text-fill: -muted;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-alignment: center-left;
+    -fx-graphic-text-gap: 10;
+    -fx-pref-width: 256;
+}
+
+.top-search:hover {
+    -fx-background-color: transparent;
+    -fx-border-color: -edge-button;
+}
+
+.top-search .icon {
+    -fx-text-fill: -muted;
+}
+
+.user-button, .user-chip {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8;
+    -fx-padding: 4 10 4 4;
+    -fx-graphic-text-gap: 10;
+    -fx-text-fill: -ink;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 14px;
+}
+
+.user-button:hover {
+    -fx-background-color: -raised;
 }
 
 /* ============================================================ Inputs */
 
 .text-field, .password-field, .text-area, .combo-box-base {
-    -fx-background-color: -input-bg;
-    -fx-background-radius: 6;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
     -fx-background-insets: 0;
-    -fx-border-color: -edge;
-    -fx-border-radius: 6;
-    -fx-text-fill: -text-input;
-    -fx-prompt-text-fill: -prompt;
-    -fx-highlight-fill: -accent;
-    -fx-highlight-text-fill: #ffffff;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 8;
+    -fx-text-fill: -ink;
+    -fx-prompt-text-fill: -faint;
+    -fx-highlight-fill: -wash-pressed;
+    -fx-highlight-text-fill: -ink;
     -fx-font-size: 14px;
 }
 
 .text-field, .password-field {
-    -fx-padding: 9 12 9 12;
+    -fx-padding: 10 14 10 14;
 }
 
 .text-area {
@@ -520,7 +641,7 @@
 
 .text-area .content {
     -fx-background-color: transparent;
-    -fx-padding: 6 8 6 8;
+    -fx-padding: 6 10 6 10;
 }
 
 .text-area .scroll-pane, .text-area .viewport {
@@ -528,40 +649,59 @@
 }
 
 .text-field:hover, .password-field:hover, .text-area:hover, .combo-box-base:hover {
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -faint;
 }
 
 .text-field:focused, .password-field:focused, .text-area:focused, .combo-box-base:focused,
 .combo-box-base:showing {
-    -fx-background-color: -input-bg-focus;
     -fx-border-color: -edge-focus;
 }
 
 .text-field:disabled, .password-field:disabled, .combo-box-base:disabled {
-    -fx-opacity: 0.6;
+    -fx-opacity: 0.5;
+}
+
+.check-box {
+    -fx-text-fill: -ink;
+}
+
+.check-box > .box {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 4;
+}
+
+.check-box:selected > .box {
+    -fx-background-color: -ink;
+    -fx-border-color: -ink;
+}
+
+.check-box:selected > .box > .mark {
+    -fx-background-color: -bg;
 }
 
 /* Search box: the icon sits inside the field */
 .search-box {
-    -fx-background-color: -input-bg;
-    -fx-background-radius: 999;
-    -fx-border-color: -edge;
-    -fx-border-radius: 999;
-    -fx-padding: 0 4 0 12;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 8;
+    -fx-padding: 0 4 0 14;
 }
 
 .search-box:focus-within {
     -fx-border-color: -edge-focus;
 }
 
-.search-box .text-field {
+.search-box .text-field, .search-box .text-field:focused, .search-box .text-field:hover {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-padding: 7 8 7 4;
+    -fx-padding: 9 8 9 6;
 }
 
 .search-box .icon {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
 }
 
 /* ComboBox and DatePicker */
@@ -570,59 +710,79 @@
 }
 
 .combo-box-base > .list-cell, .combo-box-base > .date-picker-display-node {
-    -fx-text-fill: -text-input;
+    -fx-text-fill: -ink;
     -fx-background-color: transparent;
-    -fx-padding: 6 8 6 8;
+    -fx-padding: 7 10 7 10;
 }
 
-.date-picker > .text-field {
+.date-picker > .text-field, .date-picker > .text-field:focused, .date-picker > .text-field:hover {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-padding: 6 8 6 8;
+    -fx-padding: 7 10 7 10;
 }
 
 .combo-box-base > .arrow-button, .date-picker > .arrow-button {
     -fx-background-color: transparent;
-    -fx-padding: 0 10 0 6;
+    -fx-padding: 0 12 0 6;
 }
 
 .combo-box-base > .arrow-button > .arrow, .date-picker > .arrow-button > .arrow {
-    -fx-background-color: -text-helper;
+    -fx-background-color: -muted;
 }
 
 .combo-box-popup > .list-view, .context-menu, .date-picker-popup {
-    -fx-background-color: -surface-popup;
+    -fx-background-color: -surface;
     -fx-background-radius: 8;
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -line-strong;
     -fx-border-radius: 8;
-    -fx-effect: dropshadow(gaussian, -halo, 20, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -shadow, 24, 0, 0, 8);
     -fx-padding: 4;
 }
 
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
     -fx-background-color: transparent;
-    -fx-text-fill: -text;
-    -fx-padding: 7 10 7 10;
+    -fx-text-fill: -ink;
+    -fx-padding: 8 10 8 10;
     -fx-background-radius: 6;
 }
 
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:hover,
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:selected {
-    -fx-background-color: -row-selected;
-    -fx-text-fill: -text-strong;
+    -fx-background-color: -raised;
+    -fx-text-fill: -ink;
 }
 
 .menu-item {
     -fx-background-radius: 6;
-    -fx-padding: 6 12 6 10;
+    -fx-padding: 8 12 8 10;
 }
 
 .menu-item .label {
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
+}
+
+.menu-item .icon {
+    -fx-text-fill: -muted;
 }
 
 .menu-item:focused, .menu-item:hover {
-    -fx-background-color: -row-selected;
+    -fx-background-color: -raised;
+}
+
+.menu-item.danger .label, .menu-item.danger .icon {
+    -fx-text-fill: -bad;
+}
+
+.menu-item:disabled {
+    -fx-opacity: 1;
+}
+
+.menu-item:disabled .label {
+    -fx-text-fill: -muted;
+}
+
+.context-menu .separator .line {
+    -fx-border-color: -line transparent transparent transparent;
 }
 
 .date-picker-popup > .month-year-pane {
@@ -630,7 +790,7 @@
 }
 
 .date-picker-popup .spinner .label, .date-picker-popup .month-year-pane .label {
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
     -fx-font-family: "Segoe UI Semibold";
 }
 
@@ -640,7 +800,7 @@
 }
 
 .date-picker-popup .spinner .left-arrow, .date-picker-popup .spinner .right-arrow {
-    -fx-background-color: -text-muted;
+    -fx-background-color: -muted;
 }
 
 .date-picker-popup > * > .calendar-grid {
@@ -648,34 +808,36 @@
 }
 
 .date-picker-popup .day-name-cell {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -faint;
     -fx-background-color: transparent;
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
 }
 
 .date-picker-popup .date-cell {
     -fx-background-color: transparent;
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
     -fx-background-radius: 6;
     -fx-padding: 6;
 }
 
 .date-picker-popup .date-cell:hover, .date-picker-popup .date-cell:focused {
-    -fx-background-color: -wash-hover;
+    -fx-background-color: -raised;
 }
 
-.date-picker-popup .selected {
-    -fx-background-color: -accent;
-    -fx-text-fill: #ffffff;
+.date-picker-popup .selected, .date-picker-popup .selected:hover {
+    -fx-background-color: -ink;
+    -fx-text-fill: -bg;
 }
 
 .date-picker-popup .today {
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -line-strong;
     -fx-border-radius: 6;
 }
 
 .date-picker-popup .previous-month, .date-picker-popup .next-month {
-    -fx-text-fill: -text-helper;
-    -fx-opacity: 0.5;
+    -fx-text-fill: -faint;
+    -fx-opacity: 0.6;
 }
 
 .date-picker-popup .date-cell:disabled {
@@ -697,40 +859,41 @@
 
 .table-view .column-header-background {
     -fx-background-color: transparent;
-    -fx-border-color: transparent transparent -edge transparent;
+    -fx-border-color: transparent transparent -line transparent;
 }
 
 .table-view .column-header, .table-view .filler {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-size: 38px;
+    -fx-size: 40px;
 }
 
+/* Column titles: mono caps like the web ".th" */
 .table-view .column-header .label {
-    -fx-text-fill: -text-helper;
-    -fx-font-size: 12px;
-    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: -muted;
+    -fx-font-size: 11px;
+    -fx-font-family: "Consolas";
     -fx-alignment: center-left;
-    -fx-padding: 0 8 0 8;
+    -fx-padding: 0 12 0 12;
 }
 
 .table-view .column-header .arrow {
-    -fx-background-color: -text-helper;
+    -fx-background-color: -muted;
 }
 
 .table-row-cell {
     -fx-background-color: transparent;
-    -fx-border-color: transparent transparent -edge transparent;
-    -fx-cell-size: 52px;
-    -fx-text-fill: -text;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-cell-size: 56px;
+    -fx-text-fill: -ink;
 }
 
 .table-row-cell:hover {
-    -fx-background-color: -row-hover;
+    -fx-background-color: -wash;
 }
 
 .table-row-cell:selected, .table-row-cell:selected:hover {
-    -fx-background-color: -row-selected;
+    -fx-background-color: -raised;
 }
 
 .table-row-cell:empty {
@@ -742,14 +905,10 @@
 }
 
 .table-cell {
-    -fx-text-fill: -text;
-    -fx-padding: 0 8 0 8;
+    -fx-text-fill: -ink;
+    -fx-padding: 0 12 0 12;
     -fx-alignment: center-left;
     -fx-border-color: transparent;
-}
-
-.table-row-cell:selected .table-cell {
-    -fx-text-fill: -text-strong;
 }
 
 .table-cell.amount-cell {
@@ -765,214 +924,253 @@
     -fx-background-color: transparent;
 }
 
+.list-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ink;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: -wash;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: -raised;
+}
+
 /* ============================================================ InfoBar, toast, modal */
 
 .info-bar {
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-padding: 10 12 10 12;
+    -fx-padding: 10 14 10 12;
     -fx-background-color: -wash;
-    -fx-border-color: -edge;
+    -fx-border-color: -line-strong;
 }
 
 .info-bar.error {
-    -fx-background-color: -danger-wash;
-    -fx-border-color: -danger-edge;
+    -fx-background-color: -bad-wash;
+    -fx-border-color: -bad-edge;
 }
 
 .info-bar.success {
-    -fx-background-color: -success-wash;
-    -fx-border-color: -success-edge;
+    -fx-background-color: -good-wash;
+    -fx-border-color: -good-edge;
+}
+
+.info-bar.warning {
+    -fx-background-color: -warn-wash;
+    -fx-border-color: -warn;
 }
 
 .info-bar .label {
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
+}
+
+.info-bar .icon {
+    -fx-text-fill: -muted;
 }
 
 .info-bar.error .icon {
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
 .info-bar.success .icon {
-    -fx-text-fill: -success;
+    -fx-text-fill: -good;
+}
+
+.info-bar.warning .icon {
+    -fx-text-fill: -warn;
 }
 
 .toast {
-    -fx-background-color: -highlight-edge, -surface-popup;
-    -fx-background-insets: 0, 1 0 0 0;
-    -fx-background-radius: 10;
-    -fx-border-color: -edge-strong;
-    -fx-border-radius: 10;
+    -fx-background-color: -surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 8;
     -fx-padding: 12 16 12 14;
-    -fx-effect: dropshadow(gaussian, -halo, 24, 0, 0, 10);
+    -fx-effect: dropshadow(gaussian, -shadow, 28, 0, 0, 10);
 }
 
 .toast .icon {
-    -fx-text-fill: -success;
+    -fx-text-fill: -good;
+}
+
+.toast.error {
+    -fx-border-color: -bad-edge;
 }
 
 .toast.error .icon {
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
 .modal-backdrop {
     -fx-background-color: -backdrop;
 }
 
-/* ============================================================ Dashboard & reports */
+.modal-title {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 18px;
+    -fx-text-fill: -ink;
+}
 
+/* ============================================================ Numbers, dashboard & reports */
+
+/* Large light numbers (the web "2 208 000 ₸") */
 .balance-number {
-    -fx-font-family: "Segoe UI Semilight";
-    -fx-font-size: 42px;
-    -fx-text-fill: -display-gradient;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 44px;
+    -fx-text-fill: -ink;
 }
 
 .hero-percent {
-    -fx-font-family: "Segoe UI Semilight";
-    -fx-font-size: 34px;
-    -fx-text-fill: -display-gradient;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 30px;
+    -fx-text-fill: -ink;
 }
 
 .auth-title {
-    -fx-font-family: "Segoe UI Semilight";
-    -fx-font-size: 26px;
-    -fx-text-fill: -text-strong;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 22px;
+    -fx-text-fill: -ink;
 }
 
 .meter-track {
-    -fx-background-color: -track;
+    -fx-background-color: -line;
     -fx-background-radius: 999;
 }
 
 .meter-fill {
-    -fx-background-color: -meter-gradient;
+    -fx-background-color: -ink;
     -fx-background-radius: 999;
 }
 
 .stat-caption {
-    -fx-text-fill: -text-helper;
-    -fx-font-size: 12px;
+    -fx-font-family: "Consolas";
+    -fx-text-fill: -muted;
+    -fx-font-size: 11px;
 }
 
 .stat-value {
-    -fx-font-family: "Segoe UI Semilight";
+    -fx-font-family: "Segoe UI Semibold";
     -fx-font-size: 20px;
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
 }
 
 .ledger-row {
-    -fx-border-color: transparent transparent -edge transparent;
-    -fx-padding: 11 4 11 4;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-padding: 12 4 12 4;
 }
 
 .ledger-title {
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
     -fx-font-size: 14px;
 }
 
 .ledger-amount {
     -fx-font-family: "Segoe UI Semibold";
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
 }
 
 .detail-key {
-    -fx-text-fill: -text-helper;
+    -fx-text-fill: -muted;
     -fx-font-size: 13px;
 }
 
 .detail-value {
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
     -fx-font-size: 13px;
 }
 
-/* Column chart: thin bars with a rounded top, square at the baseline (dataviz mark spec) */
+/* Column chart: gray bars with a rounded top, white when hovered or current */
 .chart-bar {
     -fx-background-color: -bar-fill;
-    -fx-background-radius: 4 4 0 0;
+    -fx-background-radius: 3 3 0 0;
 }
 
-.chart-bar:hover {
-    -fx-background-color: -bar-fill-hover;
-}
-
-.chart-bar.current {
-    -fx-background-color: -bar-fill-hover;
+.chart-bar:hover, .chart-bar.current {
+    -fx-background-color: -ink;
 }
 
 .chart-baseline {
-    -fx-background-color: -edge-strong;
+    -fx-background-color: -line-strong;
     -fx-pref-height: 1px;
     -fx-max-height: 1px;
 }
 
 .chart-gridline {
-    -fx-background-color: -edge;
+    -fx-background-color: -line;
     -fx-pref-height: 1px;
     -fx-max-height: 1px;
 }
 
 .chart-axis-label {
-    -fx-text-fill: -text-helper;
+    -fx-font-family: "Consolas";
+    -fx-text-fill: -muted;
     -fx-font-size: 11px;
 }
 
-/* Horizontal bars (creditors): rounded end, square at the start */
+/* Horizontal bars (creditors) */
 .hbar-fill {
-    -fx-background-color: -bar-fill;
-    -fx-background-radius: 0 4 4 0;
+    -fx-background-color: -ink;
+    -fx-background-radius: 999;
 }
 
 .hbar-fill:hover {
-    -fx-background-color: -bar-fill-hover;
+    -fx-background-color: -ink-hover;
 }
 
 /* Status stacked bar segments */
 .segment-active {
-    -fx-background-color: -info;
+    -fx-background-color: -ink;
 }
 
 .segment-overdue {
-    -fx-background-color: -danger;
+    -fx-background-color: -bad;
 }
 
 .segment-paid {
-    -fx-background-color: -success;
+    -fx-background-color: -good;
 }
 
 .segment-cancelled {
-    -fx-background-color: -neutral;
+    -fx-background-color: -faint;
 }
 
 .legend-swatch {
-    -fx-background-radius: 3;
-    -fx-min-width: 10;
-    -fx-min-height: 10;
-    -fx-max-width: 10;
-    -fx-max-height: 10;
+    -fx-background-radius: 999;
+    -fx-min-width: 8;
+    -fx-min-height: 8;
+    -fx-max-width: 8;
+    -fx-max-height: 8;
 }
 
 .kbd {
     -fx-font-family: "Consolas";
-    -fx-font-size: 12px;
-    -fx-text-fill: -text-strong;
-    -fx-background-color: -wash-hover;
+    -fx-font-size: 11px;
+    -fx-text-fill: -muted;
+    -fx-background-color: -raised;
     -fx-background-radius: 4;
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -line-strong;
     -fx-border-radius: 4;
-    -fx-padding: 1 6 1 6;
+    -fx-padding: 1 5 1 5;
 }
 
 /* ============================================================ Misc controls */
 
 .tooltip {
-    -fx-background-color: -surface-popup;
+    -fx-background-color: -surface;
     -fx-background-radius: 6;
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -line-strong;
     -fx-border-radius: 6;
-    -fx-text-fill: -text;
+    -fx-text-fill: -ink;
     -fx-font-size: 12px;
     -fx-padding: 6 10 6 10;
-    -fx-effect: dropshadow(gaussian, -halo, 12, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, -shadow, 12, 0, 0, 4);
 }
 
 .scroll-pane, .scroll-pane > .viewport {
@@ -983,11 +1181,17 @@
 
 .scroll-bar {
     -fx-background-color: transparent;
+    -fx-pref-width: 10;
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: -edge-strong;
+    -fx-background-color: -line-strong;
     -fx-background-radius: 999;
+    -fx-background-insets: 2;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: -faint;
 }
 
 .scroll-bar .increment-button, .scroll-bar .decrement-button {
@@ -1001,77 +1205,127 @@
 }
 
 .progress-indicator {
-    -fx-progress-color: -text;
-}
-
-.toggle-button.icon-button {
-    -fx-padding: 7;
-    -fx-min-width: 34;
-    -fx-min-height: 34;
-}
-
-.toggle-button.icon-button:selected {
-    -fx-background-color: -wash-pressed;
+    -fx-progress-color: -ink;
 }
 
 /* ============================================================ Calendar */
 
 .calendar-day {
-    -fx-background-color: -wash;
+    -fx-background-color: transparent;
     -fx-background-radius: 8;
-    -fx-border-color: transparent;
+    -fx-border-color: -line;
     -fx-border-radius: 8;
 }
 
 .calendar-day:hover {
-    -fx-background-color: -wash-hover;
+    -fx-background-color: -raised;
 }
 
 .calendar-day.other-month {
-    -fx-opacity: 0.4;
+    -fx-opacity: 0.35;
 }
 
 .calendar-day.today {
-    -fx-border-color: -edge-strong;
+    -fx-border-color: -edge-button;
 }
 
 .calendar-day.selected {
-    -fx-background-color: -wash-pressed;
-    -fx-border-color: -edge-focus;
+    -fx-background-color: -raised;
+    -fx-border-color: -ink;
+}
+
+.calendar-day.in-range {
+    -fx-background-color: -raised;
+    -fx-border-color: -line-strong;
 }
 
 .calendar-day-number {
     -fx-font-family: "Segoe UI Semibold";
     -fx-font-size: 13px;
-    -fx-text-fill: -text-strong;
+    -fx-text-fill: -ink;
 }
 
 .calendar-mark {
     -fx-font-size: 11px;
-    -fx-text-fill: -text-muted;
+    -fx-text-fill: -muted;
 }
 
 /* ============================================================ Planner and banner */
 
 .planner {
-    -fx-background-color: -wash;
-    -fx-background-radius: 10;
-    -fx-padding: 14;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: -line;
+    -fx-border-radius: 8;
+    -fx-padding: 16;
 }
 
 .banner {
-    -fx-background-color: -danger-wash;
-    -fx-background-radius: 12;
-    -fx-border-color: -danger-edge;
-    -fx-border-radius: 12;
-    -fx-padding: 14 18 14 18;
+    -fx-background-color: -bad-wash;
+    -fx-background-radius: 8;
+    -fx-border-color: -bad-edge;
+    -fx-border-radius: 8;
+    -fx-padding: 12 16 12 16;
 }
 
 .banner .icon {
-    -fx-text-fill: -danger;
+    -fx-text-fill: -bad;
 }
 
-.calendar-day.in-range {
-    -fx-background-color: -wash-pressed;
-    -fx-border-color: -edge-strong;
+/* ============================================================ Login */
+
+.login-card {
+    -fx-background-color: -surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -line-strong;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, -shadow, 48, 0, 0, 18);
+}
+
+.login-headline {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 32px;
+    -fx-text-fill: -ink;
+    -fx-text-alignment: center;
+}
+
+.login-footer {
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
+    -fx-text-fill: -faint;
+}
+
+/* Room on the right for the eye button inside the password field */
+.password-row .text-field, .password-row .password-field {
+    -fx-padding: 10 44 10 14;
+}
+
+.password-row .toggle-button.icon-button {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-padding: 6;
+}
+
+/* ------------------------------------------------------------ Notifications */
+/* Unread counter: a small red bubble over the top-right corner of the bell. */
+.badge.notification-count {
+    -fx-background-color: -bad;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-background-radius: 999;
+    -fx-padding: 0 5 0 5;
+    -fx-min-width: 16;
+    -fx-min-height: 16;
+    -fx-alignment: center;
+    -fx-font-size: 10px;
+    -fx-translate-x: 5;
+    -fx-translate-y: -5;
+}
+
+.notification-row {
+    -fx-background-radius: 6;
+}
+
+.notification-row.unread {
+    -fx-background-color: -raised;
 }

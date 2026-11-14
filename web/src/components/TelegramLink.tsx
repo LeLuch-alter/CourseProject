@@ -15,24 +15,35 @@ export function TelegramLink() {
   const [linked, setLinked] = useState(false)
   const [code, setCode] = useState<string | null>(null)
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from('telegram_links').select('chat_id').eq('user_id', user!.id).maybeSingle()
+    const { data, error } = await supabase.from('telegram_links').select('chat_id').eq('user_id', user!.id).maybeSingle()
+    if (error) {
+      toast.error(t('common.loadFailed'), error.message)
+      return
+    }
     setLinked(!!data?.chat_id)
     if (data?.chat_id) setCode(null)
-  }, [user])
+  }, [user, t, toast])
   useEffect(() => {
     void refresh()
   }, [refresh])
 
   async function link() {
     setBusy(true)
+    // Browsers (Safari above all) block window.open() called after an await, so the tab
+    // is opened right away during the click and pointed at the bot link once it is known.
+    const tab = window.open('', '_blank')
     try {
       const { data, error } = await supabase.functions.invoke('telegram', { body: { action: 'link' } })
       if (error) throw error
       const res = data as { url: string; code: string }
       setCode(res.code)
-      window.open(res.url, '_blank', 'noopener')
+      if (tab) {
+        tab.opener = null
+        tab.location.href = res.url
+      } else window.location.href = res.url
       toast.info(t('tg.opened'))
     } catch (e) {
+      tab?.close()
       toast.error(t('tg.failed'), e instanceof Error ? e.message : undefined)
     } finally {
       setBusy(false)
@@ -74,7 +85,13 @@ export function TelegramLink() {
       {code && !linked && (
         <div className="w-full flex flex-wrap items-center gap-2 text-xs text-muted">
           <span>{t('tg.codeHint')}</span>
-          <button className="chip h-7 font-mono text-ink normal-case tracking-normal hover:border-ink/50" onClick={() => void navigator.clipboard.writeText(code).then(() => toast.success(t('common.copied')))}>
+          <button className="chip h-7 font-mono text-ink normal-case tracking-normal hover:border-ink/50" onClick={() =>
+              navigator.clipboard.writeText(code).then(
+                () => toast.success(t('common.copied')),
+                () => toast.error(t('common.copyFailed')),
+              )
+            }
+          >
             {code}
             <Copy size={12} />
           </button>

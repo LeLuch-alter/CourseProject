@@ -14,11 +14,11 @@ export function QrCard({ username, size = 168 }: { username: string; size?: numb
 
   useEffect(() => {
     if (!ref.current) return
-    void QRCode.toCanvas(ref.current, url, {
+    QRCode.toCanvas(ref.current, url, {
       width: size,
       margin: 1,
       color: { dark: resolved === 'dark' ? '#f3f3f3' : '#101010', light: '#00000000' },
-    })
+    }).catch((e: unknown) => console.error('QR code was not drawn', e))
   }, [url, size, resolved])
 
   return (

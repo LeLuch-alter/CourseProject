@@ -9,7 +9,7 @@ import { formatMoney } from '../lib/money'
 import { useAuth } from '../lib/auth'
 import { useToast } from '../lib/toast'
 import { supabase } from '../lib/supabase'
-import { formatDate, formatDateTime } from '../lib/dates'
+import { formatDate, formatDateTime, localIso } from '../lib/dates'
 import { listFriendships, getProfiles, searchProfiles, sendFriendRequest, acceptFriendRequest, removeFriendship, listMessages, sendMessage, markRead, unreadCounts } from '../api/social'
 import type { Friendship, Message, Profile } from '../api/types'
 import { Avatar, Confirm, Empty, PageHeader, Skeleton } from '../components/ui'
@@ -36,7 +36,11 @@ export function FriendsPage() {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Profile[]>([])
   const [removing, setRemoving] = useState<Friendship | null>(null)
-  const [loanKind, setLoanKind] = useState<'lend' | 'borrow' | null>((params.get('action') as 'lend' | 'borrow') || null)
+  // ?action= can also be "split" (from the dashboard); only lend/borrow open the loan form.
+  const [loanKind, setLoanKind] = useState<'lend' | 'borrow' | null>(() => {
+    const a = params.get('action')
+    return a === 'lend' || a === 'borrow' ? a : null
+  })
   const [splitOpen, setSplitOpen] = useState(params.get('action') === 'split')
   const [roomOpen, setRoomOpen] = useState(false)
   const [rooms, setRooms] = useState<Array<Room & { members: string[] }>>([])
@@ -63,30 +67,47 @@ export function FriendsPage() {
     void load()
   }, [load])
 
+  // The open chat is read through a ref, so switching chats does not tear down and recreate the channel.
+  const activeIdRef = useRef(activeId)
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
+
   useEffect(() => {
     const ch = supabase
       .channel('friends-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => void load())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
         const m = p.new as Message
-        if (m.receiver_id === me && m.sender_id !== activeId) setUnread((u) => ({ ...u, [m.sender_id]: (u[m.sender_id] ?? 0) + 1 }))
+        if (m.receiver_id === me && m.sender_id !== activeIdRef.current) setUnread((u) => ({ ...u, [m.sender_id]: (u[m.sender_id] ?? 0) + 1 }))
       })
       .subscribe()
     return () => {
       void supabase.removeChannel(ch)
     }
-  }, [load, me, activeId])
+  }, [load, me])
 
   useEffect(() => {
+    // A slow answer for an older query must not replace the results of the newer one.
+    let current = true
     const h = setTimeout(() => {
       if (q.trim().length >= 2)
         searchProfiles(q, me)
-          .then(setResults)
-          .catch(() => setResults([]))
+          .then((r) => {
+            if (current) setResults(r)
+          })
+          .catch((e) => {
+            if (!current) return
+            setResults([])
+            toast.error(t('common.loadFailed'), e instanceof Error ? e.message : undefined)
+          })
       else setResults([])
     }, 250)
-    return () => clearTimeout(h)
-  }, [q, me])
+    return () => {
+      current = false
+      clearTimeout(h)
+    }
+  }, [q, me, t, toast])
 
   const other = (f: Friendship) => (f.requester_id === me ? f.addressee_id : f.requester_id)
   const friends = useMemo(() => friendships.filter((f) => f.status === 'ACCEPTED'), [friendships])
@@ -180,10 +201,10 @@ export function FriendsPage() {
                       <div className="text-sm font-medium truncate">{p?.display_name}</div>
                       <div className="text-xs text-faint">@{p?.username}</div>
                     </div>
-                    <button className="btn-primary h-8 w-8 px-0" onClick={() => void act(() => acceptFriendRequest(f.id))}>
+                    <button className="btn-primary h-8 w-8 px-0" onClick={() => void act(() => acceptFriendRequest(f.id))} aria-label={t('friends.accept')}>
                       <Check size={15} />
                     </button>
-                    <button className="btn-ghost h-8 w-8 px-0" onClick={() => void act(() => removeFriendship(f.id))}>
+                    <button className="btn-ghost h-8 w-8 px-0" onClick={() => void act(() => removeFriendship(f.id))} aria-label={t('friends.decline')}>
                       <X size={15} />
                     </button>
                   </div>
@@ -349,7 +370,11 @@ function Chat({ friendId, me, onRead }: { friendId: string; me: string; onRead: 
           setLoading(false)
         }
       })
-      .catch((e) => toast.error(t('common.loadFailed'), String(e)))
+      .catch((e) => {
+        if (!alive) return
+        setLoading(false)
+        toast.error(t('common.loadFailed'), e instanceof Error ? e.message : String(e))
+      })
     void markRead(friendId)
       .then(onRead)
       .catch(() => undefined)
@@ -395,6 +420,7 @@ function Chat({ friendId, me, onRead }: { friendId: string; me: string; onRead: 
     roomRef.current = room
     return () => {
       roomRef.current = null
+      if (typingRef.current) clearTimeout(typingRef.current)
       void supabase.removeChannel(room)
     }
   }, [friendId, me])
@@ -440,7 +466,8 @@ function Chat({ friendId, me, onRead }: { friendId: string; me: string; onRead: 
           <div className="h-full flex items-center justify-center text-sm text-muted">{t('chat.empty')}</div>
         ) : (
           messages.map((m) => {
-            const day = m.created_at.slice(0, 10),
+            // created_at is a UTC timestamp; the day separator uses the local calendar day.
+            const day = localIso(new Date(m.created_at)),
               showDay = day !== lastDay
             lastDay = day
             const mine = m.sender_id === me

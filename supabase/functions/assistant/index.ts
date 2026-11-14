@@ -8,7 +8,11 @@ import { admin, cors, json, sendTelegram, userFrom } from '../_shared/common.ts'
 
 // Google retires model names over time; when one is overloaded (503) or gone (404) the next one is tried.
 const MODELS = [...new Set([Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'])]
-const DAILY_LIMIT = Number(Deno.env.get('AI_DAILY_LIMIT') ?? '60')
+// A typo in the secret (NaN) would otherwise switch the limit off completely.
+const limitSetting = Number(Deno.env.get('AI_DAILY_LIMIT') ?? '60')
+const DAILY_LIMIT = Number.isFinite(limitSetting) && limitSetting >= 0 ? limitSetting : 60
+// Cap for the whole conversation sent by the site (function call arguments are not limited one by one).
+const MAX_CONTENTS_CHARS = 60000
 const LANG_NAME: Record<string, string> = { ru: 'Russian', kk: 'Kazakh', en: 'English' }
 
 const SYSTEM = (lang: string, today: string) => `You are the assistant inside Kvit, a personal debt and payment tracker (a student project).
@@ -147,13 +151,27 @@ Deno.serve(async (req) => {
   const lang = ['ru', 'kk', 'en'].includes(body?.lang) ? body.lang : 'ru'
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today ?? '') ? body.today : new Date().toISOString().slice(0, 10)
   const data = JSON.stringify(body?.snapshot ?? {})
-  if (!contents || data.length > 40000) return json({ error: 'bad_request' }, 400)
+  if (!contents || data.length > 40000 || JSON.stringify(contents).length > MAX_CONTENTS_CHARS) return json({ error: 'bad_request' }, 400)
 
-  // per-user daily limit so one account cannot use up the shared key
+  // Per-user daily limit so one account cannot use up the shared key.
+  // The request is recorded first and counted afterwards, so parallel requests cannot all
+  // slip under the limit. If the usage table cannot be read, the request is refused.
+  const { data: usage, error: usageError } = await db.from('ai_usage').insert({ user_id: user.id }).select('id').single()
+  if (usageError) {
+    console.error('Could not record AI usage', usageError.message)
+    return json({ error: 'busy' })
+  }
   const since = new Date(Date.now() - 86400_000).toISOString()
-  const { count } = await db.from('ai_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', since)
-  if ((count ?? 0) >= DAILY_LIMIT) return json({ error: 'limit' })
-  await db.from('ai_usage').insert({ user_id: user.id })
+  const { count, error: countError } = await db.from('ai_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', since)
+  if (countError || count === null) {
+    console.error('Could not count AI usage', countError?.message)
+    return json({ error: 'busy' })
+  }
+  if (count > DAILY_LIMIT) {
+    // a refused request does not use up the quota
+    await db.from('ai_usage').delete().eq('id', usage.id)
+    return json({ error: 'limit' })
+  }
 
   const request = JSON.stringify({
     systemInstruction: { parts: [{ text: `${SYSTEM(lang, today)}\n\n<DATA>\n${data}\n</DATA>` }] },
@@ -165,14 +183,22 @@ Deno.serve(async (req) => {
 
   let lastStatus = 0
   for (const model of MODELS) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: request,
-    })
+    let res: Response
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: request,
+      })
+    } catch (e) {
+      // network failure: answer with a normal error instead of crashing (the browser would see a CORS error)
+      console.error('Gemini request failed', model, e instanceof Error ? e.message : e)
+      lastStatus = 503
+      continue
+    }
     lastStatus = res.status
     if (res.ok) {
-      const out = await res.json()
+      const out = await res.json().catch(() => null)
       const parts: Part[] = (out?.candidates?.[0]?.content?.parts ?? []).filter((p: Part) => p.text || p.functionCall)
       return json({ parts })
     }

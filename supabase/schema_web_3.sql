@@ -1,6 +1,9 @@
 -- =====================================================================
 -- Kvit Web, part 3 (run AFTER schema_web_2.sql, re-runnable):
 -- currencies, receipt photos for payments, Telegram link, AI usage log.
+-- NOTE: schema_web_5.sql replaces several grants, policies and functions
+-- defined in the web scripts with fixed versions. Run it after the last
+-- schema_web file and again whenever you re-run this file.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

@@ -11,12 +11,19 @@ import javafx.scene.layout.VBox;
 import kz.kvit.config.UserSettings;
 import kz.kvit.i18n.I18n;
 import kz.kvit.service.AuthService;
+import kz.kvit.service.ProfileService;
 
 /** Settings: theme, language, account, keyboard shortcuts and information about the app. */
 public class SettingsView implements Page {
     private final VBox root;
 
     public SettingsView(AuthService authService, UserSettings settings, Runnable onSettingsChanged) {
+        this(authService, settings, onSettingsChanged, null, null);
+    }
+
+    /** With profileService (and host for messages), the reminders and Telegram card is shown too. */
+    public SettingsView(AuthService authService, UserSettings settings, Runnable onSettingsChanged,
+                        ProfileService profileService, ModalHost host) {
         root = Ui.page(I18n.t("settings.eyebrow"), I18n.t("settings.title"), null);
 
         VBox appearance = card(Icons.SUN, I18n.t("settings.appearance"),
@@ -40,6 +47,9 @@ public class SettingsView implements Page {
                 Ui.wrapped(I18n.t("settings.about.text"), "body-muted"));
 
         VBox left = new VBox(20, appearance, account);
+        if (profileService != null && host != null) {
+            left.getChildren().add(new ReminderSettingsCard(profileService, host).getRoot());
+        }
         VBox right = new VBox(20, shortcuts, about);
         HBox columns = new HBox(20, left, right);
         HBox.setHgrow(left, Priority.ALWAYS);

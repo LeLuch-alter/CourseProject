@@ -5,14 +5,18 @@ import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
 import { formatMoney, parseAmount } from '../lib/money'
 import { formatDate } from '../lib/dates'
-import { averageMonthlyPayment, payoffPlan, type Strategy } from '../lib/calc'
+import { averageMonthlyPayment, currencyOf, payoffPlan, type Strategy } from '../lib/calc'
 import { Segmented } from './ui'
 
 // Plan for all debts at once: one monthly budget, three possible orders.
 export function PlanCard() {
   const { t, locale } = useI18n()
   const { debts, payments } = useData()
-  const ownPayments = useMemo(() => payments.filter((p) => debts.find((d) => d.id === p.debt_id)?.direction === 'OWED'), [debts, payments])
+  // The plan works in tenge, so the suggested budget only counts payments on live tenge OWED debts.
+  const ownPayments = useMemo(() => {
+    const ids = new Set(debts.filter((d) => d.direction === 'OWED' && d.status !== 'CANCELLED' && currencyOf(d) === 'KZT').map((d) => d.id))
+    return payments.filter((p) => ids.has(p.debt_id))
+  }, [debts, payments])
   const avg = averageMonthlyPayment(ownPayments)
   const [budget, setBudget] = useState(avg > 0 ? String(Math.round(avg)) : '')
   const [strategy, setStrategy] = useState<Strategy>('deadline')
@@ -42,8 +46,10 @@ export function PlanCard() {
       </div>
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label className="label">{t('plan.budget')}</label>
-          <input className="input h-10 w-44 num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" />
+          <label className="label" htmlFor="plan-budget">
+            {t('plan.budget')}
+          </label>
+          <input id="plan-budget" className="input h-10 w-44 num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" />
         </div>
         {avg > 0 && <div className="text-xs text-muted pb-2.5">{t('plan.avg', formatMoney(avg, locale))}</div>}
       </div>

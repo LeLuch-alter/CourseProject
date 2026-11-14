@@ -51,19 +51,29 @@ function addDays(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+// The cron job runs every 15 minutes, so 23:45 is the last run of a day. A later chosen
+// time (for example 23:50) would never be reached and is treated as 23:45.
+const LAST_RUN_MINUTES = 23 * 60 + 45
+
+// Money is added in tiyn (integers) so 0.1 + 0.2 style float errors do not show up as a debt.
+const toTiyn = (v: number | string) => Math.round(Number(v) * 100)
+
 // The reminder is due once the chosen time has passed today, on a day the user selected,
 // and nothing was sent yet today. ">=" instead of "==" means a missed cron run is caught up later.
 function isDue(p: ProfileRow, now: { date: string; minutes: number; weekday: number }): boolean {
   if (p.last_reminded_on === now.date) return false
-  const [h, m] = p.reminder_time.split(':').map(Number)
-  if (now.minutes < h * 60 + m) return false
+  const [h, m] = (p.reminder_time ?? '08:00').split(':').map(Number)
+  const chosen = Number.isFinite(h) && Number.isFinite(m) ? Math.min(h * 60 + m, LAST_RUN_MINUTES) : 8 * 60
+  if (now.minutes < chosen) return false
   if (p.reminder_mode === 'weekdays') return p.reminder_weekdays.includes(now.weekday)
   if (p.reminder_mode === 'dates') return p.reminder_dates.includes(now.date)
   return true
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) return new Response('forbidden', { status: 403 })
+  // An unset secret must not turn into "any request without the header is accepted".
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) return new Response('forbidden', { status: 403 })
   const db = admin()
   const resendKey = Deno.env.get('RESEND_API_KEY')
   const site = siteUrl()
@@ -72,7 +82,8 @@ Deno.serve(async (req) => {
     .from('profiles')
     .select('id, display_name, reminder_days, email_reminders, reminder_time, reminder_tz, reminder_mode, reminder_weekdays, reminder_dates, last_reminded_on')
   if (error) return json({ error: error.message }, 500)
-  const { data: links } = await db.from('telegram_links').select('user_id, chat_id').not('chat_id', 'is', null)
+  const { data: links, error: linksError } = await db.from('telegram_links').select('user_id, chat_id').not('chat_id', 'is', null)
+  if (linksError) return json({ error: linksError.message }, 500)
   const chatOf = new Map((links ?? []).map((l) => [l.user_id as string, l.chat_id as number]))
 
   let telegram = 0, email = 0
@@ -83,11 +94,19 @@ Deno.serve(async (req) => {
     if (!isDue(p, now)) continue
 
     // Mark the day first: if sending fails, the user is not spammed every 15 minutes.
-    const { error: markError } = await db.from('profiles').update({ last_reminded_on: now.date }).eq('id', p.id)
+    // The update only matches while the day is not marked yet, so when two runs overlap
+    // only one of them gets the row back and sends the message.
+    const { data: claimed, error: markError } = await db
+      .from('profiles')
+      .update({ last_reminded_on: now.date })
+      .eq('id', p.id)
+      .or(`last_reminded_on.is.null,last_reminded_on.neq.${now.date}`)
+      .select('id')
     if (markError) {
       console.error('Could not mark reminder as sent', p.id, markError.message)
       continue
     }
+    if (!claimed || claimed.length === 0) continue
 
     const { data, error: debtsError } = await db
       .from('debts')
@@ -102,7 +121,7 @@ Deno.serve(async (req) => {
       continue
     }
     const open = ((data ?? []) as DebtRow[])
-      .map((d) => ({ ...d, left: Number(d.original_amount) - d.payments.reduce((a, x) => a + Number(x.amount), 0) }))
+      .map((d) => ({ ...d, left: (toTiyn(d.original_amount) - (d.payments ?? []).reduce((a, x) => a + toTiyn(x.amount), 0)) / 100 }))
       .filter((d) => d.left > 0)
     if (open.length === 0) continue
 
@@ -113,21 +132,27 @@ Deno.serve(async (req) => {
       if (ok) telegram++
     }
     if (p.email_reminders && resendKey) {
-      const { data: u } = await db.auth.admin.getUserById(p.id)
+      const { data: u, error: userError } = await db.auth.admin.getUserById(p.id)
+      if (userError) console.error('Could not load user e-mail', p.id, userError.message)
       const to = u?.user?.email
       if (!to) continue
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: Deno.env.get('MAIL_FROM') ?? 'Kvit <onboarding@resend.dev>',
-          to,
-          subject: `Kvit: ${open.length} срок(а) в ближайшие ${p.reminder_days} дн.`,
-          html: `<p>Здравствуйте, ${escapeHtml(p.display_name)}!</p><p>${lines.join('<br>')}</p><p><a href="${site}/debts">Открыть Kvit</a></p>`,
-        }),
-      })
-      if (res.ok) email++
-      else console.error('Resend failed', res.status, await res.text())
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: Deno.env.get('MAIL_FROM') ?? 'Kvit <onboarding@resend.dev>',
+            to,
+            subject: `Kvit: ${open.length} срок(а) в ближайшие ${p.reminder_days} дн.`,
+            html: `<p>Здравствуйте, ${escapeHtml(p.display_name)}!</p><p>${lines.join('<br>')}</p><p><a href="${site}/debts">Открыть Kvit</a></p>`,
+          }),
+        })
+        if (res.ok) email++
+        else console.error('Resend failed', res.status, await res.text())
+      } catch (e) {
+        // keep going: the other users still get their reminders
+        console.error('Resend failed', p.id, e instanceof Error ? e.message : e)
+      }
     }
   }
   return json({ telegram, email })

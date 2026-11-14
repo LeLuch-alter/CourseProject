@@ -10,19 +10,21 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import kz.kvit.config.UserSettings;
 import kz.kvit.i18n.I18n;
 import kz.kvit.service.AuthService;
 
+import java.time.Year;
+
 /**
- * Login screen: brand and settings on top, animated hero on the left,
- * sign-in / sign-up card on the right.
+ * Login screen, laid out like the web login: logo and settings on top, one centered card
+ * (sign in or sign up, switched by the link at the bottom of the card), a starry backdrop behind it.
  */
 public class LoginView {
     private final AuthService authService;
@@ -32,18 +34,19 @@ public class LoginView {
 
     private final StackPane root = new StackPane();
     private final VBox card = new VBox();
-    private final ToggleButton signInTab = new ToggleButton(I18n.t("login.tab.signIn"));
-    private final ToggleButton signUpTab = new ToggleButton(I18n.t("login.tab.signUp"));
-    private final Label cardTitle = Ui.label("", "auth-title");
-    private final Label cardSubtitle = Ui.wrapped("", "body-muted");
+    private final Label modeLabel = Ui.label("", "eyebrow");
+    private final Label modeSubtitle = Ui.wrapped("", "body-muted");
     private final TextField emailField = new TextField();
     private final PasswordField passwordField = new PasswordField();
     private final TextField visiblePasswordField = new TextField();
-    private final ToggleButton showPasswordButton = new ToggleButton(null, Icons.create(Icons.EYE, 13));
+    private final ToggleButton showPasswordButton = new ToggleButton(null, Icons.create(Icons.EYE, 14));
     private final Label passwordHint = Ui.wrapped(I18n.t("login.passwordHint"), "helper");
     private final Button submitButton = new Button();
     private final ProgressIndicator progress = new ProgressIndicator();
     private final InfoBar infoBar = new InfoBar();
+    private final Label switchQuestion = Ui.label("", "body-muted");
+    private final Button switchButton = new Button();
+    private boolean signUpMode;
 
     /** @param notice optional message shown on the card at start (e.g. "signed out after inactivity") */
     public LoginView(AuthService authService, UserSettings settings, String notice, Runnable onSignedIn,
@@ -64,63 +67,46 @@ public class LoginView {
     }
 
     private void build() {
-        HBox topBar = new HBox(12, Brand.mark(44), Ui.hSpacer(),
+        HBox topBar = new HBox(8, Brand.lockup(30), Ui.hSpacer(),
                 SettingsControls.languageSwitch(settings, onSettingsChanged),
-                SettingsControls.themeSwitch(settings, onSettingsChanged, false));
+                Ui.themeToggle(settings, onSettingsChanged));
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-        VBox hero = buildHeroColumn();
         buildCard();
-        HBox columns = new HBox(48, hero, card);
-        columns.setAlignment(Pos.CENTER);
-        HBox.setHgrow(hero, Priority.ALWAYS);
+        StackPane center = new StackPane(card);
+        center.setPadding(new Insets(16, 0, 16, 0));
 
-        BorderPane layout = new BorderPane(columns);
+        Label footer = Ui.label("© " + Year.now().getValue() + " " + Brand.NAME.toUpperCase(), "login-footer");
+
+        BorderPane layout = new BorderPane(center);
         layout.setTop(topBar);
-        BorderPane.setMargin(topBar, new Insets(0, 0, 8, 0));
-        layout.setPadding(new Insets(22, 48, 28, 48));
+        layout.setBottom(footer);
+        layout.setPadding(new Insets(16, 40, 20, 40));
 
-        root.getChildren().addAll(new BlueprintBackground(), layout);
+        root.getChildren().addAll(new BlueprintBackground(), new LoginHero(), layout);
 
-        Motion.fadeIn(hero, 0);
-        Motion.fadeIn(card, 120);
+        Motion.fadeIn(card, 60, 14);
         // With a remembered email the cursor goes straight to the password.
         emailField.setText(settings.getLastEmail());
         Platform.runLater(() -> (emailField.getText().isEmpty() ? emailField : passwordField).requestFocus());
     }
 
-    private VBox buildHeroColumn() {
-        Label wordmark = Ui.label(Brand.NAME, "display");
-        Label tagline = Ui.wrapped(I18n.t("login.tagline"), "body-muted");
-        tagline.setMaxWidth(440);
-
-        LoginHero heroObject = new LoginHero();
-        VBox.setVgrow(heroObject, Priority.ALWAYS);
-
-        VBox column = new VBox(12, Ui.eyebrow(I18n.t("login.eyebrow")), wordmark, tagline, heroObject);
-        column.setAlignment(Pos.CENTER_LEFT);
-        column.setMinWidth(0);
-        return column;
-    }
-
     private void buildCard() {
-        ToggleGroup modes = new ToggleGroup();
-        for (ToggleButton tab : new ToggleButton[]{signInTab, signUpTab}) {
-            tab.setToggleGroup(modes);
-            tab.getStyleClass().add("mode-tab");
-        }
-        // Keep one tab always selected, even if the active one is clicked again.
-        modes.selectedToggleProperty().addListener((obs, oldTab, newTab) -> {
-            if (newTab == null) {
-                oldTab.setSelected(true);
-            } else if (newTab == signInTab) {
-                showSignInMode();
-            } else {
-                showSignUpMode();
-            }
-        });
-        signInTab.setSelected(true);
-        HBox tabs = new HBox(20, signInTab, signUpTab);
+        Circle dot = new Circle(3);
+        dot.getStyleClass().addAll("status-dot", "success");
+        Label chipText = Ui.label(I18n.t("ui.login.chip").toUpperCase(I18n.locale()), "eyebrow");
+        HBox chip = new HBox(8, dot, chipText);
+        chip.setAlignment(Pos.CENTER);
+        chip.getStyleClass().add("chip");
+        chip.setMaxWidth(HBox.USE_PREF_SIZE);
+
+        Label headline = Ui.wrapped(I18n.t("login.eyebrow"), "login-headline");
+        headline.setAlignment(Pos.CENTER);
+        headline.setMaxWidth(Double.MAX_VALUE);
+
+        VBox intro = new VBox(16, chip, headline);
+        intro.setAlignment(Pos.CENTER);
+        intro.setPadding(new Insets(0, 0, 8, 0));
 
         emailField.setPromptText("name@mail.kz");
         passwordField.setPromptText(I18n.t("login.passwordPrompt"));
@@ -132,28 +118,45 @@ public class LoginView {
         submitButton.setMaxWidth(Double.MAX_VALUE);
         submitButton.setOnAction(event -> submit());
 
-        VBox passwordGroup = new VBox(6, Ui.label(I18n.t("login.password"), "field-label"), passwordRow(), passwordHint);
+        VBox passwordGroup = new VBox(6,
+                Ui.label(I18n.t("login.password").toUpperCase(I18n.locale()), "field-label"),
+                passwordRow(), passwordHint);
+
+        switchButton.getStyleClass().add("link");
+        switchButton.setOnAction(event -> {
+            if (signUpMode) {
+                showSignInMode();
+            } else {
+                showSignUpMode();
+            }
+        });
+        HBox switchRow = new HBox(8, switchQuestion, Ui.hSpacer(), switchButton);
+        switchRow.setAlignment(Pos.CENTER_LEFT);
 
         card.getChildren().addAll(
-                new VBox(6, cardTitle, cardSubtitle),
-                tabs, Ui.field(I18n.t("login.email"), emailField), passwordGroup, infoBar, submitButton);
-        VBox.setMargin(submitButton, new Insets(2, 0, 0, 0));
+                intro, Ui.hairline(),
+                new VBox(6, modeLabel, modeSubtitle),
+                Ui.field(I18n.t("login.email"), emailField), passwordGroup, infoBar, submitButton,
+                Ui.hairline(), switchRow);
+        VBox.setMargin(submitButton, new Insets(4, 0, 4, 0));
         card.setSpacing(16);
-        card.getStyleClass().add("modal-card");
-        card.setPadding(new Insets(30, 32, 30, 32));
-        card.setPrefWidth(390);
+        card.getStyleClass().add("login-card");
+        card.setPadding(new Insets(28, 32, 22, 32));
+        card.setPrefWidth(460);
+        card.setMaxWidth(460);
         card.setMinWidth(340);
         card.setMaxHeight(VBox.USE_PREF_SIZE);
     }
 
-    /** Password field with an eye button that shows the typed password as plain text. */
-    private HBox passwordRow() {
+    /** Password field with an eye button inside it that shows the typed password as plain text. */
+    private StackPane passwordRow() {
         visiblePasswordField.textProperty().bindBidirectional(passwordField.textProperty());
         visiblePasswordField.setPromptText(passwordField.getPromptText());
         visiblePasswordField.setVisible(false);
         visiblePasswordField.setOnAction(event -> submit());
 
-        showPasswordButton.getStyleClass().add("icon-button");
+        showPasswordButton.getStyleClass().addAll("quiet", "icon-button");
+        showPasswordButton.setFocusTraversable(false);
         Ui.tooltip(showPasswordButton, I18n.t("login.showPassword"));
         showPasswordButton.selectedProperty().addListener((obs, wasShown, show) -> {
             visiblePasswordField.setVisible(show);
@@ -164,36 +167,43 @@ public class LoginView {
             active.end();
         });
 
-        StackPane fields = new StackPane(passwordField, visiblePasswordField);
-        HBox row = new HBox(8, fields, showPasswordButton);
-        row.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(fields, Priority.ALWAYS);
+        StackPane row = new StackPane(passwordField, visiblePasswordField, showPasswordButton);
+        row.getStyleClass().add("password-row");
+        StackPane.setAlignment(showPasswordButton, Pos.CENTER_RIGHT);
+        StackPane.setMargin(showPasswordButton, new Insets(0, 4, 0, 0));
+        HBox.setHgrow(row, Priority.ALWAYS);
         return row;
     }
 
     private void showSignInMode() {
-        cardTitle.setText(I18n.t("login.signIn.title"));
-        cardSubtitle.setText(I18n.t("login.signIn.subtitle"));
+        signUpMode = false;
+        modeLabel.setText(I18n.t("login.tab.signIn").toUpperCase(I18n.locale()));
+        modeSubtitle.setText(I18n.t("login.signIn.subtitle"));
         submitButton.setText(I18n.t("login.signIn.button"));
+        switchQuestion.setText(I18n.t("ui.login.noAccount"));
+        switchButton.setText(I18n.t("login.signUp.button"));
         passwordHint.setVisible(false);
         passwordHint.setManaged(false);
         infoBar.hide();
     }
 
     private void showSignUpMode() {
-        cardTitle.setText(I18n.t("login.signUp.title"));
-        cardSubtitle.setText(I18n.t("login.signUp.subtitle"));
+        signUpMode = true;
+        modeLabel.setText(I18n.t("login.tab.signUp").toUpperCase(I18n.locale()));
+        modeSubtitle.setText(I18n.t("login.signUp.subtitle"));
         submitButton.setText(I18n.t("login.signUp.button"));
+        switchQuestion.setText(I18n.t("ui.login.haveAccount"));
+        switchButton.setText(I18n.t("login.signIn.button"));
         passwordHint.setVisible(true);
         passwordHint.setManaged(true);
         infoBar.hide();
     }
 
     private void submit() {
-        if (signInTab.isSelected()) {
-            signIn();
-        } else {
+        if (signUpMode) {
             signUp();
+        } else {
+            signIn();
         }
     }
 
@@ -228,7 +238,7 @@ public class LoginView {
                     if (loggedIn) {
                         onSignedIn.run();
                     } else {
-                        signInTab.setSelected(true);
+                        showSignInMode();
                         infoBar.show(InfoBar.Severity.SUCCESS, I18n.t("login.signUp.checkEmail", email.trim()));
                     }
                 },
@@ -240,8 +250,7 @@ public class LoginView {
         passwordField.setDisable(busy);
         visiblePasswordField.setDisable(busy);
         showPasswordButton.setDisable(busy);
-        signInTab.setDisable(busy);
-        signUpTab.setDisable(busy);
+        switchButton.setDisable(busy);
         submitButton.setDisable(busy);
         if (busy) {
             infoBar.hide();
@@ -249,7 +258,7 @@ public class LoginView {
             submitButton.setGraphic(progress);
         } else {
             submitButton.setGraphic(null);
-            submitButton.setText(I18n.t(signInTab.isSelected() ? "login.signIn.button" : "login.signUp.button"));
+            submitButton.setText(I18n.t(signUpMode ? "login.signUp.button" : "login.signIn.button"));
         }
     }
 

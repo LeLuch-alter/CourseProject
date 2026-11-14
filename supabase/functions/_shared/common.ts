@@ -39,13 +39,19 @@ export async function sendTelegram(chatId: number | string, text: string, button
   if (!token) return false
   const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
   if (button) body.reply_markup = { inline_keyboard: [[button]] }
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) console.error('Telegram sendMessage failed', res.status, await res.text())
-  return res.ok
+  // A network error must not abort the caller (due-reminders loops over many users).
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) console.error('Telegram sendMessage failed', res.status, await res.text())
+    return res.ok
+  } catch (e) {
+    console.error('Telegram sendMessage failed', e instanceof Error ? e.message : e)
+    return false
+  }
 }
 
 export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

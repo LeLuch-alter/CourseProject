@@ -7,6 +7,7 @@ import { useToast } from '../lib/toast'
 import { useData } from '../lib/data'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/dates'
+import { isStrongPassword } from '../lib/calc'
 import { updateProfile, uploadAvatar, listFriendships, listLoans } from '../api/social'
 import { Avatar, Field, PageHeader, stagger } from '../components/ui'
 import { QrCard } from '../components/QrCard'
@@ -95,7 +96,7 @@ export function ProfilePage() {
 
   async function changePassword(e: FormEvent) {
     e.preventDefault()
-    if (password.length < 8 || !/\d/.test(password) || !/\D/.test(password)) {
+    if (!isStrongPassword(password)) {
       toast.error(t('err.password'))
       return
     }
@@ -133,7 +134,7 @@ export function ProfilePage() {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="absolute inset-0 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+              className="absolute inset-0 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition"
               aria-label={t('profile.changePhoto')}
             >
               {uploading ? '…' : <Camera size={22} />}
@@ -217,7 +218,9 @@ export function ProfilePage() {
 function shrink(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    const src = URL.createObjectURL(file)
     img.onload = () => {
+      URL.revokeObjectURL(src)
       const max = 512,
         scale = Math.min(1, max / Math.max(img.width, img.height))
       const side = Math.min(img.width, img.height) * scale
@@ -231,9 +234,13 @@ function shrink(file: File): Promise<File> {
       ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, side, side)
       void sx
       void sy
-      canvas.toBlob((b) => (b ? resolve(new File([b], 'avatar.webp', { type: 'image/webp' })) : reject(new Error('resize failed'))), 'image/webp', 0.86)
+      // Safari cannot encode WebP and silently returns PNG, so the real blob type is used.
+      canvas.toBlob((b) => (b ? resolve(new File([b], 'avatar', { type: b.type })) : reject(new Error('resize failed'))), 'image/webp', 0.86)
     }
-    img.onerror = () => reject(new Error('bad image'))
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(src)
+      reject(new Error('bad image'))
+    }
+    img.src = src
   })
 }

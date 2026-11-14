@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion, type TargetAndTransition, type Transition } from 'framer-motion'
 
 // A long receipt tape running vertically behind the sign-in card. The tape scrolls
 // upward in a seamless loop; on each row a debt line is "written" and ticked off.
@@ -8,7 +8,13 @@ const ROW_H = 56
 const ROWS = 14
 const W = 560
 
+// Props for one looping element. With "reduce motion" on, it is drawn once in its final state.
+function loop(reduce: boolean, from: TargetAndTransition, keyframes: TargetAndTransition, final: TargetAndTransition, transition: Transition) {
+  return reduce ? { initial: final, animate: final } : { initial: from, animate: keyframes, transition }
+}
+
 export function TapeHero({ className = '' }: { className?: string }) {
+  const reduce = !!useReducedMotion()
   // deterministic pseudo-random widths so the server/client never disagree
   const rows = useMemo(
     () =>
@@ -25,7 +31,7 @@ export function TapeHero({ className = '' }: { className?: string }) {
     <div aria-hidden className={`pointer-events-none absolute left-1/2 top-0 bottom-0 -translate-x-1/2 overflow-hidden ${className}`} style={{ width: W }}>
       {/* fade the tape in and out at the viewport edges */}
       <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to bottom, rgb(var(--bg)) 0%, transparent 18%, transparent 82%, rgb(var(--bg)) 100%)' }} />
-      <motion.div className="absolute left-0 right-0" style={{ top: 0 }} animate={{ y: [0, -H] }} transition={{ duration: 48, ease: 'linear', repeat: Infinity }}>
+      <motion.div className="absolute left-0 right-0" style={{ top: 0 }} animate={reduce ? undefined : { y: [0, -H] }} transition={{ duration: 48, ease: 'linear', repeat: Infinity }}>
         {[0, 1].map((copy) => (
           <svg key={copy} width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" className="block text-ink">
             {/* paper edges with the classic receipt zigzag only on the very first/last copy */}
@@ -45,15 +51,15 @@ export function TapeHero({ className = '' }: { className?: string }) {
                 <g key={i}>
                   <line x1="60" x2={W - 60} y1={i * ROW_H} y2={i * ROW_H} stroke="currentColor" strokeOpacity="0.1" strokeDasharray="2 6" />
                   {/* description line, written left to right */}
-                  <motion.line x1="100" x2={100 + r.w1} y1={y - 8} y2={y - 8} stroke="currentColor" strokeOpacity="0.5" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: [0, 1, 1, 1] }} transition={{ duration: 6, times: [0, 0.15, 0.9, 1], delay, repeat: Infinity, repeatDelay: 2 }} />
-                  <motion.line x1="100" x2={100 + r.w2} y1={y + 8} y2={y + 8} stroke="currentColor" strokeOpacity="0.28" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: [0, 1, 1, 1] }} transition={{ duration: 6, times: [0, 0.2, 0.9, 1], delay: delay + 0.2, repeat: Infinity, repeatDelay: 2 }} />
+                  <motion.line x1="100" x2={100 + r.w1} y1={y - 8} y2={y - 8} stroke="currentColor" strokeOpacity="0.5" strokeWidth="2" strokeLinecap="round" {...loop(reduce, { pathLength: 0 }, { pathLength: [0, 1, 1, 1] }, { pathLength: 1 }, { duration: 6, times: [0, 0.15, 0.9, 1], delay, repeat: Infinity, repeatDelay: 2 })} />
+                  <motion.line x1="100" x2={100 + r.w2} y1={y + 8} y2={y + 8} stroke="currentColor" strokeOpacity="0.28" strokeWidth="2" strokeLinecap="round" {...loop(reduce, { pathLength: 0 }, { pathLength: [0, 1, 1, 1] }, { pathLength: 1 }, { duration: 6, times: [0, 0.2, 0.9, 1], delay: delay + 0.2, repeat: Infinity, repeatDelay: 2 })} />
                   {/* amount block on the right */}
-                  <motion.rect x={W - 190} y={y - 7} width="70" height="14" rx="2" stroke="rgb(var(--accent2))" strokeOpacity="0.8" strokeWidth="1.2" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 1, 1] }} transition={{ duration: 6, times: [0, 0.25, 0.9, 1], delay: delay + 0.4, repeat: Infinity, repeatDelay: 2 }} />
+                  <motion.rect x={W - 190} y={y - 7} width="70" height="14" rx="2" stroke="rgb(var(--accent2))" strokeOpacity="0.8" strokeWidth="1.2" {...loop(reduce, { opacity: 0 }, { opacity: [0, 1, 1, 1] }, { opacity: 1 }, { duration: 6, times: [0, 0.25, 0.9, 1], delay: delay + 0.4, repeat: Infinity, repeatDelay: 2 })} />
                   {/* tick for paid rows, a thin dash for open ones */}
                   {r.paid ? (
-                    <motion.path d={`M${W - 100} ${y}l6 6 12-14`} stroke="rgb(var(--accent2))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: [0, 0, 1, 1] }} transition={{ duration: 6, times: [0, 0.45, 0.6, 1], delay, repeat: Infinity, repeatDelay: 2 }} />
+                    <motion.path d={`M${W - 100} ${y}l6 6 12-14`} stroke="rgb(var(--accent2))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...loop(reduce, { pathLength: 0 }, { pathLength: [0, 0, 1, 1] }, { pathLength: 1 }, { duration: 6, times: [0, 0.45, 0.6, 1], delay, repeat: Infinity, repeatDelay: 2 })} />
                   ) : (
-                    <motion.line x1={W - 100} x2={W - 82} y1={y} y2={y} stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 1, 1] }} transition={{ duration: 6, times: [0, 0.5, 0.9, 1], delay, repeat: Infinity, repeatDelay: 2 }} />
+                    <motion.line x1={W - 100} x2={W - 82} y1={y} y2={y} stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" {...loop(reduce, { opacity: 0 }, { opacity: [0, 1, 1, 1] }, { opacity: 1 }, { duration: 6, times: [0, 0.5, 0.9, 1], delay, repeat: Infinity, repeatDelay: 2 })} />
                   )}
                 </g>
               )

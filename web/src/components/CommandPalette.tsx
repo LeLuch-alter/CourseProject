@@ -16,7 +16,7 @@ interface Item {
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { debts } = useData()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
@@ -28,6 +28,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       setIdx(0)
     }
   }, [open])
+
+  // Esc closes the palette from anywhere (the hint in the search field promises it).
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   const items = useMemo<Item[]>(() => {
     const pages: Item[] = [
@@ -45,14 +58,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       id: `d${d.id}`,
       group: t('cmd.debts'),
       label: d.title,
-      hint: `${d.creditor_name} · ${formatMoney(d.original_amount)}`,
+      hint: `${d.creditor_name} · ${formatMoney(d.original_amount, locale, d.currency)}`,
       icon: <Wallet size={16} />,
       go: () => navigate(`/debts?id=${d.id}`),
     }))
     const all = [...pages, ...ds]
     const s = q.trim().toLowerCase()
     return s ? all.filter((i) => (i.label + ' ' + (i.hint ?? '')).toLowerCase().includes(s)).slice(0, 12) : pages
-  }, [q, debts, t, navigate])
+  }, [q, debts, t, locale, navigate])
 
   useEffect(() => {
     setIdx(0)
@@ -72,6 +85,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             initial={{ y: -12, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: -12, scale: 0.98, opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('cmd.placeholder')}
             className="relative card w-full max-w-xl overflow-hidden"
           >
             <div className="flex items-center gap-3 px-4 h-14 border-b border-line">
@@ -81,6 +97,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t('cmd.placeholder')}
+                aria-label={t('cmd.placeholder')}
                 className="flex-1 bg-transparent outline-none text-base"
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
@@ -94,7 +111,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   if (e.key === 'Enter' && items[idx]) run(items[idx])
                 }}
               />
-              <kbd className="text-[10px] text-faint border border-line rounded px-1.5 py-0.5">Esc</kbd>
+              <button type="button" onClick={onClose} aria-label={t('common.close')} className="text-[10px] text-faint border border-line rounded px-1.5 py-0.5 hover:text-ink">
+                Esc
+              </button>
             </div>
             <div className="max-h-[50vh] overflow-y-auto p-2">
               {items.length === 0 && <div className="p-6 text-center text-sm text-muted">{t('common.nothing')}</div>}

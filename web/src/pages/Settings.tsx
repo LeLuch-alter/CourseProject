@@ -67,7 +67,6 @@ export function SettingsPage() {
         reminder_weekdays: weekdays,
         reminder_dates: dates,
       })
-      try { localStorage.setItem('kvit.reminderDays', String(n)) } catch { /* ignore */ }
       await refreshProfile()
       toast.success(t('common.saved'))
     } catch (e) {
@@ -90,13 +89,13 @@ export function SettingsPage() {
           <h2 className="mb-1 flex items-center gap-2"><BellRing size={18} className="text-accent2" strokeWidth={1.5} />{t('rem.title')}</h2>
           <p className="text-sm text-muted mb-4">{t('rem.text')}</p>
           <div className="flex flex-wrap items-end gap-3">
-            <div><label className="label">{t('rem.days')}</label><input className="input h-10 w-28 num" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} /></div>
-            <div><label className="label">{t('rem.time')}</label><input type="time" className="input h-10 w-32 num" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+            <div><label className="label" htmlFor="rem-days">{t('rem.days')}</label><input id="rem-days" className="input h-10 w-28 num" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} /></div>
+            <div><label className="label" htmlFor="rem-time">{t('rem.time')}</label><input id="rem-time" type="time" className="input h-10 w-32 num" value={time} onChange={(e) => setTime(e.target.value)} /></div>
             <label className="flex items-center gap-2 h-10 text-sm cursor-pointer"><input type="checkbox" className="accent-current" checked={email} onChange={(e) => setEmail(e.target.checked)} />{t('rem.email')}</label>
           </div>
 
           <div className="mt-4">
-            <label className="label">{t('rem.when')}</label>
+            <div className="label">{t('rem.when')}</div>
             <Segmented<ReminderMode>
               value={mode}
               onChange={setMode}
@@ -127,7 +126,7 @@ export function SettingsPage() {
           {mode === 'dates' && (
             <div className="mt-3">
               <div className="flex flex-wrap items-center gap-2">
-                <input type="date" className="input h-10 w-44" min={todayIso()} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+                <input type="date" aria-label={t('rem.addDate')} className="input h-10 w-44" min={todayIso()} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
                 <button type="button" className="btn-outline h-10" onClick={addDate} disabled={!newDate}><Plus size={15} />{t('rem.addDate')}</button>
               </div>
               {dates.length > 0 && (

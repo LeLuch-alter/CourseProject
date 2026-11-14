@@ -4,7 +4,7 @@ import { Send, LogOut, Trash2, Check } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 import { supabase } from '../lib/supabase'
-import { formatDate, formatDateTime } from '../lib/dates'
+import { formatDate, formatDateTime, localIso } from '../lib/dates'
 import { listRoomMessages, sendRoomMessage, leaveRoom, deleteRoom, createRoom, type Room, type RoomMessage } from '../api/extra'
 import type { Profile } from '../api/types'
 import { Avatar, Confirm, Field, Modal, Skeleton } from './ui'
@@ -29,7 +29,11 @@ export function GroupChat({ room, me, profiles, onLeft }: { room: Room & { membe
           setLoading(false)
         }
       })
-      .catch((e) => toast.error(t('common.loadFailed'), String(e)))
+      .catch((e) => {
+        if (!alive) return
+        setLoading(false)
+        toast.error(t('common.loadFailed'), e instanceof Error ? e.message : String(e))
+      })
     const ch = supabase
       .channel(`room-msgs-${room.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `room_id=eq.${room.id}` }, (p) => {
@@ -87,7 +91,7 @@ export function GroupChat({ room, me, profiles, onLeft }: { room: Room & { membe
           <div className="truncate">{room.name}</div>
           <div className="font-mono text-[11px] text-faint truncate">{room.members.map((id) => profiles[id]?.display_name ?? '…').join(', ')}</div>
         </div>
-        <button className="btn-ghost btn-icon h-9 w-9 text-muted" onClick={() => setConfirm(owner ? 'delete' : 'leave')} title={owner ? t('common.delete') : t('room.leave')}>
+        <button className="btn-ghost btn-icon h-9 w-9 text-muted" onClick={() => setConfirm(owner ? 'delete' : 'leave')} title={owner ? t('common.delete') : t('room.leave')} aria-label={owner ? t('common.delete') : t('room.leave')}>
           {owner ? <Trash2 size={16} /> : <LogOut size={16} />}
         </button>
       </div>
@@ -102,7 +106,8 @@ export function GroupChat({ room, me, profiles, onLeft }: { room: Room & { membe
           <div className="h-full flex items-center justify-center text-sm text-muted">{t('chat.empty')}</div>
         ) : (
           messages.map((m) => {
-            const day = m.created_at.slice(0, 10),
+            // created_at is a UTC timestamp; the day separator uses the local calendar day.
+            const day = localIso(new Date(m.created_at)),
               showDay = day !== lastDay
             lastDay = day
             const mine = m.sender_id === me
@@ -168,7 +173,7 @@ export function RoomForm({ open, onClose, friends, onCreated }: { open: boolean;
             {friends.map((f) => {
               const on = picked.includes(f.id)
               return (
-                <button type="button" key={f.id} onClick={() => toggle(f.id)} className={`flex items-center gap-2 h-9 pl-1 pr-3 rounded-full border transition ${on ? 'border-ink bg-ink text-bg' : 'border-line hover:bg-raised'}`}>
+                <button type="button" key={f.id} onClick={() => toggle(f.id)} aria-pressed={on} className={`flex items-center gap-2 h-9 pl-1 pr-3 rounded-full border transition ${on ? 'border-ink bg-ink text-bg' : 'border-line hover:bg-raised'}`}>
                   <Avatar profile={f} size={26} />
                   <span className="text-sm">{f.display_name}</span>
                   {on && <Check size={14} />}

@@ -42,7 +42,15 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
 }
 
 export async function searchProfiles(query: string, excludeId: string): Promise<Profile[]> {
-  const q = query.trim().toLowerCase().replace(/^@/, '')
+  // The text goes into a PostgREST or() filter: commas, brackets, quotes and backslashes
+  // would break its syntax, and % / * are wildcards. Usernames only use a-z, 0-9 and _.
+  const q = query
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, '')
+    .replace(/[,()"'\\%*:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (q.length < 2) return []
   const { data, error } = await supabase.from('profiles').select('*').neq('id', excludeId).or(`username.ilike.%${q}%,display_name.ilike.%${q}%`).limit(10)
   if (error) fail(error)
@@ -82,10 +90,11 @@ export async function listMessages(friendId: string): Promise<Message[]> {
     .from('messages')
     .select('*')
     .or(`and(sender_id.eq.${me},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${me})`)
-    .order('created_at', { ascending: true })
+    // Newest 500, flipped back to chronological order, so a long chat still shows recent messages.
+    .order('created_at', { ascending: false })
     .limit(500)
   if (error) fail(error)
-  return data as Message[]
+  return (data as Message[]).reverse()
 }
 
 export async function sendMessage(receiverId: string, body: string): Promise<Message> {

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { BarChart3, Download } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
-import { formatMoney, formatCompact, sum } from '../lib/money'
+import { formatMoney, formatCompact, sum, toTiyn, fromTiyn } from '../lib/money'
 import { paymentsByMonth, remainingFor, effectiveStatus, forecastMonths, currencyOf } from '../lib/calc'
 import { todayIso } from '../lib/dates'
 import { PlanCard } from '../components/PlanCard'
@@ -23,7 +23,7 @@ export function ReportsPage() {
       toast.error(t('pdf.failed'), e instanceof Error ? e.message : undefined)
     }
   }
-  const { debts, payments, summary, loading } = useData()
+  const { debts, payments, summary, loading, error, reload } = useData()
 
   const [period, setPeriod] = useState<'3' | '6' | '12' | 'custom'>('6')
   const thisMonth = todayIso().slice(0, 7)
@@ -40,7 +40,7 @@ export function ReportsPage() {
 
   const byCreditor = useMemo(() => {
     const map = new Map<string, number>()
-    for (const d of owed) map.set(d.creditor_name, (map.get(d.creditor_name) ?? 0) + remainingFor(d, payments))
+    for (const d of owed) map.set(d.creditor_name, fromTiyn(toTiyn(map.get(d.creditor_name) ?? 0) + toTiyn(remainingFor(d, payments))))
     return [...map.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
   }, [owed, payments])
   const creditorTotal = sum(byCreditor.map(([, v]) => v))
@@ -63,6 +63,20 @@ export function ReportsPage() {
         <Skeleton className="h-72" />
       </div>
     )
+  if (error)
+    return (
+      <div className="card">
+        <Empty
+          title={t('common.loadFailed')}
+          text={error}
+          action={
+            <button className="btn-primary" onClick={() => void reload()}>
+              {t('common.retry')}
+            </button>
+          }
+        />
+      </div>
+    )
   if (debts.length === 0) return <Empty icon={<BarChart3 />} title={t('reports.empty')} />
 
   const colors: Record<string, string> = { ACTIVE: 'bg-accent', OVERDUE: 'bg-bad', PAID: 'bg-good', CANCELLED: 'bg-faint' }
@@ -80,8 +94,8 @@ export function ReportsPage() {
       />
       {period === 'custom' && (
         <div className="flex flex-wrap items-end gap-3 mb-4">
-          <div><label className="label">{t('rep.from')}</label><input className="input h-10" type="month" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></div>
-          <div><label className="label">{t('rep.to')}</label><input className="input h-10" type="month" value={to} min={from} max={thisMonth} onChange={(e) => e.target.value && setTo(e.target.value)} /></div>
+          <div><label className="label" htmlFor="rep-from">{t('rep.from')}</label><input id="rep-from" className="input h-10" type="month" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></div>
+          <div><label className="label" htmlFor="rep-to">{t('rep.to')}</label><input id="rep-to" className="input h-10" type="month" value={to} min={from} max={thisMonth} onChange={(e) => e.target.value && setTo(e.target.value)} /></div>
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-2">

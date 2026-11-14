@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useI18n } from '../lib/i18n'
+import { isStrongPassword } from '../lib/calc'
 import { useToast } from '../lib/toast'
 import { Field } from '../components/ui'
 
@@ -18,7 +19,7 @@ export function ResetPasswordPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (password.length < 8 || !/\d/.test(password) || !/\D/.test(password)) {
+    if (!isStrongPassword(password)) {
       setError(t('err.password'))
       return
     }

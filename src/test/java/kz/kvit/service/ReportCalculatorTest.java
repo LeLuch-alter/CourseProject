@@ -2,6 +2,7 @@ package kz.kvit.service;
 
 import kz.kvit.model.CreditorTotal;
 import kz.kvit.model.Debt;
+import kz.kvit.model.DebtDirection;
 import kz.kvit.model.DebtStatus;
 import kz.kvit.model.MonthTotal;
 import kz.kvit.model.Payment;
@@ -116,6 +117,32 @@ class ReportCalculatorTest {
     void noForecastWithoutRecentPaymentsOrWhenNothingIsLeft() {
         assertNull(calculator.forecast(new BigDecimal("1000.00"), List.of(payment(1L, "10.00", TODAY.minusYears(1))), TODAY));
         assertNull(calculator.forecast(BigDecimal.ZERO, List.of(payment(1L, "10.00", TODAY)), TODAY));
+    }
+
+    @Test
+    void creditorsAndStatusesCountOnlyMyOwnDebts() {
+        Debt mine = debt(1L, "Kaspi", "1000.00", DebtStatus.ACTIVE, null);
+        Debt lent = debt(2L, "Friend", "5000.00", DebtStatus.ACTIVE, TODAY.minusDays(1));
+        lent.setDirection(DebtDirection.LENT);
+        Debt dollars = debt(3L, "Bank", "700.00", DebtStatus.ACTIVE, null);
+        dollars.setCurrency("USD");
+
+        List<CreditorTotal> creditors = calculator.byCreditor(List.of(mine, lent, dollars), List.of());
+        StatusBreakdown statuses = calculator.statuses(List.of(mine, lent, dollars), List.of(), TODAY);
+
+        assertEquals(List.of("Kaspi"), creditors.stream().map(CreditorTotal::creditorName).toList());
+        // The lent debt is overdue but not counted; the dollar debt is mine, so it is counted.
+        assertEquals(new StatusBreakdown(2, 0, 0, 0), statuses);
+    }
+
+    @Test
+    void forecastCountsAPaymentOnTheFirstDayOfTheWindow() {
+        List<Payment> payments = List.of(payment(1L, "300.00", TODAY.minusMonths(3)));
+
+        PayoffForecast forecast = calculator.forecast(new BigDecimal("1000.00"), payments, TODAY);
+
+        assertEquals(new BigDecimal("100.00"), forecast.averageMonthlyPayment());
+        assertEquals(10, forecast.monthsLeft());
     }
 
     private static Debt debt(Long id, String creditor, String amount, DebtStatus status, LocalDate dueDate) {

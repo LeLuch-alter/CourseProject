@@ -32,7 +32,8 @@ export function splitEqually(total: number, parts: number): number[] {
 }
 
 export async function createSchedule(debtId: number, remaining: number, parts: number, firstDate: string): Promise<void> {
-  await supabase.from('installments').delete().eq('debt_id', debtId)
+  const { error: deleteError } = await supabase.from('installments').delete().eq('debt_id', debtId)
+  if (deleteError) fail(deleteError)
   const rows = splitEqually(remaining, parts).map((amount, i) => ({ debt_id: debtId, seq: i + 1, due_date: addMonths(firstDate, i), amount }))
   const { error } = await supabase.from('installments').insert(rows)
   if (error) fail(error)
@@ -95,9 +96,10 @@ export async function deleteRoom(roomId: string): Promise<void> {
 }
 
 export async function listRoomMessages(roomId: string): Promise<RoomMessage[]> {
-  const { data, error } = await supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at').limit(500)
+  // Newest 500, flipped back to chronological order, so a long chat still shows recent messages.
+  const { data, error } = await supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at', { ascending: false }).limit(500)
   if (error) fail(error)
-  return data as RoomMessage[]
+  return (data as RoomMessage[]).reverse()
 }
 
 export async function sendRoomMessage(roomId: string, body: string): Promise<RoomMessage> {

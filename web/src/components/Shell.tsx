@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { LayoutDashboard, Wallet, Receipt, BarChart3, CalendarDays, Users, FileSignature, Settings, LogOut, Bell, Sun, Moon, Monitor, Search, Menu, X, User as UserIcon, Check } from 'lucide-react'
+import { LayoutDashboard, Wallet, Receipt, BarChart3, CalendarDays, Users, FileSignature, Settings, LogOut, Bell, Sun, Moon, Monitor, Search, Menu, User as UserIcon, Check } from 'lucide-react'
 import { useI18n, LANGS, type Lang } from '../lib/i18n'
 import { useTheme } from '../lib/theme'
 import { useAuth } from '../lib/auth'
@@ -31,7 +31,7 @@ const NAV = [
 ]
 
 export function Shell() {
-  const { t, lang, setLang } = useI18n()
+  const { t, lang, locale, setLang } = useI18n()
   const { theme, resolved, cycle } = useTheme()
   const { profile, signOut } = useAuth()
   const toast = useToast()
@@ -101,13 +101,20 @@ export function Shell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      // e.code is the physical key, so Ctrl+K also works with the Russian/Kazakh layout (where e.key is "л").
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
         e.preventDefault()
         setCmdOpen((v) => !v)
       }
-      if ((e.ctrlKey || e.metaKey) && /^[1-7]$/.test(e.key)) {
+      const digit = /^Digit([1-7])$/.exec(e.code)
+      if ((e.ctrlKey || e.metaKey) && digit) {
         e.preventDefault()
-        navigate(NAV[Number(e.key) - 1].to)
+        navigate(NAV[Number(digit[1]) - 1].to)
+      }
+      if (e.key === 'Escape') {
+        setMobileOpen(false)
+        setNotifOpen(false)
+        setUserOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -122,10 +129,10 @@ export function Shell() {
 
   function describe(n: Notification): string {
     if (n.kind === 'friend_request' || n.kind === 'friend_accepted') return t(`notif.${n.kind}`)
-    if (n.kind.startsWith('loan_')) return t(`notif.${n.kind}`, formatMoney(n.body ?? 0))
+    if (n.kind.startsWith('loan_')) return t(`notif.${n.kind}`, formatMoney(n.body ?? 0, locale))
     if (n.kind === 'message') return t('notif.message', n.body ?? '')
     if (n.kind === 'due_soon') return t('notif.due_soon_one', n.body ?? '')
-    if (n.kind === 'split') return t('notif.split', formatMoney(n.body ?? 0))
+    if (n.kind === 'split') return t('notif.split', formatMoney(n.body ?? 0, locale))
     if (n.kind === 'room') return t('notif.room')
     return n.body ?? ''
   }
@@ -216,7 +223,7 @@ export function Shell() {
 
       <div className="relative min-w-0 flex flex-col min-h-screen">
         <header className="sticky top-0 z-40 h-16 flex items-center gap-2 px-4 sm:px-6 border-b border-line bg-bg/60 backdrop-blur-xl">
-          <button className="btn-icon btn-ghost lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Menu">
+          <button className="btn-icon btn-ghost lg:hidden" onClick={() => setMobileOpen(true)} aria-label={t('nav.menu')} aria-expanded={mobileOpen}>
             <Menu size={20} />
           </button>
           <button onClick={() => setCmdOpen(true)} className="hidden sm:flex items-center gap-2 h-9 px-3.5 rounded-lg border border-line text-muted text-sm w-64 hover:border-ink/50 transition">
@@ -231,6 +238,7 @@ export function Shell() {
               <button
                 key={l}
                 onClick={() => setLang(l as Lang)}
+                aria-pressed={lang === l}
                 className={`relative h-8 px-2.5 rounded font-mono text-[11px] uppercase transition ${lang === l ? 'text-bg' : 'text-muted hover:text-ink'}`}
               >
                 {lang === l && <motion.span layoutId="lang-pill" className="absolute inset-0 rounded bg-ink" />}
@@ -240,21 +248,14 @@ export function Shell() {
           </div>
 
           <button className="btn-icon btn-ghost" onClick={cycle} title={t(`theme.${theme}`)} aria-label={t(`theme.${theme}`)}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={theme + resolved}
-                initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-                animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ThemeIcon size={19} />
-              </motion.span>
-            </AnimatePresence>
+            {/* Enter-only animation: with mode="wait" fast clicks could leave the button without an icon. */}
+            <motion.span key={theme + resolved} initial={{ rotate: -90, opacity: 0, scale: 0.6 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}>
+              <ThemeIcon size={19} />
+            </motion.span>
           </button>
 
           <div className="relative">
-            <button className="btn-icon btn-ghost relative" onClick={openNotifs} aria-label={t('notif.title')}>
+            <button className="btn-icon btn-ghost relative" onClick={openNotifs} aria-label={t('notif.title')} aria-expanded={notifOpen}>
               <Bell size={19} />
               {unread > 0 && (
                 <motion.span
@@ -308,7 +309,7 @@ export function Shell() {
                           <div className="text-sm">
                             <span className="font-semibold">{n.title}</span> <span className="text-muted">{describe(n)}</span>
                           </div>
-                          <div className="text-[11px] text-faint mt-0.5">{formatDateTime(n.created_at)}</div>
+                          <div className="text-[11px] text-faint mt-0.5">{formatDateTime(n.created_at, locale)}</div>
                         </button>
                       ))
                     )}
@@ -325,6 +326,8 @@ export function Shell() {
                 setNotifOpen(false)
               }}
               className="flex items-center gap-2 h-10 pl-1 pr-2 rounded-lg hover:bg-raised transition"
+              aria-label={t('nav.profile')}
+              aria-expanded={userOpen}
             >
               <Avatar profile={profile} size={32} />
               <span className="hidden md:block text-sm max-w-[140px] truncate">{profile?.display_name}</span>
@@ -388,7 +391,6 @@ export function Shell() {
           }}
         />
       )}
-      <X className="hidden" />
     </div>
   )
 }

@@ -9,6 +9,8 @@ public class Payment {
     private BigDecimal amount;
     private LocalDate paymentDate;
     private String notes;
+    // Id of the original payment when this row is the database's copy for the other side of a loan.
+    private Long mirrorOf;
 
     public Long getId() {
         return id;
@@ -48,5 +50,18 @@ public class Payment {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public Long getMirrorOf() {
+        return mirrorOf;
+    }
+
+    public void setMirrorOf(Long mirrorOf) {
+        this.mirrorOf = mirrorOf;
+    }
+
+    /** Copies are created and deleted by the database together with the original payment. */
+    public boolean isMirror() {
+        return mirrorOf != null;
     }
 }

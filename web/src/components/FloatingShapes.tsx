@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 // Slow-drifting hairline outlines (coins, receipts, a check) behind the app.
 // Purely decorative: aria-hidden, pointer-events none, very low contrast.
@@ -11,6 +11,8 @@ const SHAPES = [
 ] as const
 
 export function FloatingShapes() {
+  // With "reduce motion" switched on in the OS the shapes stay still.
+  const reduce = useReducedMotion()
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
       {SHAPES.map((s, i) => (
@@ -18,8 +20,8 @@ export function FloatingShapes() {
           key={i}
           className="absolute text-ink/[0.08] dark:text-ink/[0.07]"
           style={{ left: s.x, top: s.y, width: s.size, height: s.size }}
-          animate={{ y: [0, -28, 0, 18, 0], x: [0, 12, 0, -10, 0], rotate: [0, 4, 0, -3, 0] }}
-          transition={{ duration: s.dur, delay: s.delay, repeat: Infinity, ease: 'easeInOut' }}
+          animate={reduce ? undefined : { y: [0, -28, 0, 18, 0], x: [0, 12, 0, -10, 0], rotate: [0, 4, 0, -3, 0] }}
+          transition={reduce ? undefined : { duration: s.dur, delay: s.delay, repeat: Infinity, ease: 'easeInOut' }}
         >
           {s.kind === 'coin' && (
             <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2">

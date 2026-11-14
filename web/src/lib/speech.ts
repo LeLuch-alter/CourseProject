@@ -41,7 +41,14 @@ export function listen(lang: Lang, onText: (t: string) => void, onDone: (t: stri
   }
   r.onerror = (e) => onError(e.error)
   r.onend = () => onDone(text.trim())
-  r.start()
+  try {
+    r.start()
+  } catch (e) {
+    // start() throws when recognition is already running or the page is not allowed to use it.
+    console.error('Speech recognition did not start', e)
+    onError('start-failed')
+    return () => undefined
+  }
   return () => r.stop()
 }
 

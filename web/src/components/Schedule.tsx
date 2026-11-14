@@ -4,12 +4,12 @@ import { CalendarRange, Check, Trash2 } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 import { useData } from '../lib/data'
-import { formatMoney } from '../lib/money'
+import { formatMoney, toTiyn, fromTiyn } from '../lib/money'
 import { formatDate, todayIso, addMonths } from '../lib/dates'
 import { createPayment, syncStatus } from '../api/debts'
 import { listInstallments, createSchedule, deleteSchedule, markInstallmentPaid, splitEqually, type Installment } from '../api/extra'
 import type { Debt } from '../api/types'
-import { Field } from './ui'
+import { Confirm, Field } from './ui'
 
 // Payment schedule inside the debt card: split the remaining balance into N equal
 // monthly instalments; ticking one records a real payment and links it.
@@ -21,15 +21,29 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
   const [parts, setParts] = useState('3')
   const [first, setFirst] = useState(addMonths(todayIso(), 1))
   const [busy, setBusy] = useState(false)
-
-  const load = useCallback(() => listInstallments(debt.id).then(setItems).catch(() => setItems([])), [debt.id])
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const load = useCallback(
+    () =>
+      listInstallments(debt.id)
+        .then((rows) => {
+          setItems(rows)
+          setLoadFailed(false)
+        })
+        .catch((e: unknown) => {
+          // Showing the "create" form here would let the user overwrite a schedule that does exist.
+          console.error('Could not load the schedule', e)
+          setLoadFailed(true)
+        }),
+    [debt.id],
+  )
   useEffect(() => {
     void load()
   }, [load])
 
   async function create() {
     const n = Number(parts)
-    if (!Number.isInteger(n) || n < 1 || n > 60 || remaining <= 0) return
+    if (!Number.isInteger(n) || n < 1 || n > 60 || remaining <= 0 || !first || first < todayIso()) return
     setBusy(true)
     try {
       await createSchedule(debt.id, remaining, n, first)
@@ -48,9 +62,9 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
       const amount = Math.min(Number(inst.amount), remaining)
       const p = await createPayment({ debt_id: debt.id, amount, payment_date: todayIso(), notes: `${t('sched.title')} ${inst.seq}` })
       await markInstallmentPaid(inst, p.id)
-      await syncStatus(debt, Math.max(0, Math.round((remaining - amount) * 100) / 100))
+      await syncStatus(debt, fromTiyn(Math.max(0, toTiyn(remaining) - toTiyn(amount))))
       await Promise.all([load(), reload()])
-      toast.success(t('common.saved'), formatMoney(amount, locale))
+      toast.success(t('common.saved'), formatMoney(amount, locale, debt.currency))
     } catch (e) {
       toast.error(t('common.saveFailed'), e instanceof Error ? e.message : undefined)
     } finally {
@@ -59,16 +73,31 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
   }
 
   async function remove() {
+    setBusy(true)
     try {
       await deleteSchedule(debt.id)
       await load()
+      toast.success(t('common.deleted'))
     } catch (e) {
       toast.error(t('common.saveFailed'), e instanceof Error ? e.message : undefined)
+    } finally {
+      setBusy(false)
+      setConfirmDelete(false)
     }
   }
 
+  if (loadFailed)
+    return (
+      <div className="mt-5 p-4 rounded-lg border border-line text-sm flex items-center justify-between gap-3">
+        <span className="text-bad">{t('common.loadFailed')}</span>
+        <button className="btn-outline h-8" onClick={() => void load()}>
+          {t('common.retry')}
+        </button>
+      </div>
+    )
   if (items === null) return null
-  const preview = Number(parts) >= 1 && Number(parts) <= 60 ? splitEqually(remaining, Number(parts)) : []
+  const n = Number(parts)
+  const preview = Number.isInteger(n) && n >= 1 && n <= 60 && remaining > 0 ? splitEqually(remaining, n) : []
   const today = todayIso()
 
   return (
@@ -79,7 +108,7 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
           {t('sched.title')}
         </div>
         {items.length > 0 && (
-          <button className="text-faint hover:text-bad transition" onClick={() => void remove()} title={t('common.delete')}>
+          <button className="text-faint hover:text-bad transition" onClick={() => setConfirmDelete(true)} title={t('common.delete')} aria-label={t('common.delete')}>
             <Trash2 size={14} />
           </button>
         )}
@@ -98,10 +127,10 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
             </div>
             {preview.length > 0 && (
               <div className="text-xs text-muted">
-                {t('sched.preview', preview.length, formatMoney(preview[0], locale))}
+                {t('sched.preview', preview.length, formatMoney(preview[0], locale, debt.currency))}
               </div>
             )}
-            <button className="btn-outline h-9 w-full" onClick={() => void create()} disabled={busy || preview.length === 0}>
+            <button className="btn-outline h-9 w-full" onClick={() => void create()} disabled={busy || preview.length === 0 || !first || first < today}>
               {t('sched.create')}
             </button>
           </div>
@@ -126,12 +155,22 @@ export function Schedule({ debt, remaining }: { debt: Debt; remaining: number })
                   <span className="text-muted"> · {inst.seq}/{items.length}</span>
                   {late && <span className="ml-2 chip h-5 text-bad border-bad/40">{t('status.OVERDUE')}</span>}
                 </div>
-                <span className="text-sm num">{formatMoney(inst.amount, locale)}</span>
+                <span className="text-sm num">{formatMoney(inst.amount, locale, debt.currency)}</span>
               </motion.li>
             )
           })}
         </ul>
       )}
+      <Confirm
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
+        busy={busy}
+        title={t('sched.delete.title')}
+        text={t('sched.delete.text')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+      />
     </div>
   )
 }

@@ -430,7 +430,7 @@ public class CalendarView implements Page {
         dot.getStyleClass().addAll("status-dot", dotStyle(overview));
         String subtitle = overview.debt().getCreditorName() + (selection.isSingleDay() ? "" : " · " + Formats.date(day));
         VBox text = new VBox(1, Ui.label(overview.debt().getTitle(), "ledger-title"), Ui.label(subtitle, "helper"));
-        VBox right = new VBox(3, Ui.label(Formats.money(overview.remaining()), "ledger-amount"),
+        VBox right = new VBox(3, Ui.label(Formats.money(overview.remaining(), overview.debt().getCurrency()), "ledger-amount"),
                 Ui.statusBadge(overview));
         right.setAlignment(Pos.CENTER_RIGHT);
         keepFullWidth(right, text);
@@ -444,7 +444,7 @@ public class CalendarView implements Page {
         String subtitle = selection.isSingleDay() ? entry.creditorName()
                 : Formats.date(entry.payment().getPaymentDate()) + " · " + entry.creditorName();
         VBox text = new VBox(1, Ui.label(entry.debtTitle(), "ledger-title"), Ui.label(subtitle, "helper"));
-        Label amount = Ui.label("+" + Formats.money(entry.payment().getAmount()), "ledger-amount", "text-success");
+        Label amount = Ui.label("+" + Formats.money(entry.payment().getAmount(), entry.currency()), "ledger-amount", "text-success");
         keepFullWidth(amount, text);
         HBox row = new HBox(10, Icons.create(Icons.PAYMENT, 14), text, Ui.hSpacer(), amount);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -462,10 +462,13 @@ public class CalendarView implements Page {
         HBox.setHgrow(shrinking, Priority.ALWAYS);
     }
 
+    /** Total in tenge; payments on debts in other currencies are not added (Kvit never converts). */
     private static BigDecimal sum(List<PaymentEntry> payments) {
         BigDecimal total = BigDecimal.ZERO;
         for (PaymentEntry entry : payments) {
-            total = total.add(entry.payment().getAmount());
+            if (entry.isInTenge()) {
+                total = total.add(entry.payment().getAmount());
+            }
         }
         return total;
     }

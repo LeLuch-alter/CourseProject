@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 export type Lang = 'ru' | 'kk' | 'en'
 export const LANGS: Lang[] = ['ru', 'kk', 'en']
@@ -47,6 +47,17 @@ const ru: Dict = {
   'common.more': 'Ещё',
   'common.copy': 'Копировать',
   'common.copied': 'Скопировано',
+  'common.copyFailed': 'Не удалось скопировать',
+  'auth.showPassword': 'Показать пароль',
+  'auth.hidePassword': 'Скрыть пароль',
+  'cal.prev': 'Предыдущий месяц',
+  'cal.next': 'Следующий месяц',
+  'nav.menu': 'Меню',
+  'friends.accept': 'Принять заявку',
+  'friends.decline': 'Отклонить заявку',
+  'sched.delete.title': 'Удалить график?',
+  'sched.delete.text': 'График погашения будет удалён. Уже внесённые платежи останутся.',
+  'err.belowPaid': 'Сумма меньше уже оплаченной части',
   'common.loadFailed': 'Не удалось загрузить данные',
   'common.saveFailed': 'Не удалось сохранить',
   'common.saved': 'Сохранено',
@@ -362,6 +373,17 @@ const kk: Dict = {
   'common.more': 'Тағы',
   'common.copy': 'Көшіру',
   'common.copied': 'Көшірілді',
+  'common.copyFailed': 'Көшіру мүмкін болмады',
+  'auth.showPassword': 'Құпиясөзді көрсету',
+  'auth.hidePassword': 'Құпиясөзді жасыру',
+  'cal.prev': 'Алдыңғы ай',
+  'cal.next': 'Келесі ай',
+  'nav.menu': 'Мәзір',
+  'friends.accept': 'Өтінімді қабылдау',
+  'friends.decline': 'Өтінімді қабылдамау',
+  'sched.delete.title': 'Кестені жою керек пе?',
+  'sched.delete.text': 'Өтеу кестесі жойылады. Енгізілген төлемдер сақталады.',
+  'err.belowPaid': 'Сома төленген бөліктен аз',
   'common.loadFailed': 'Деректерді жүктеу мүмкін болмады',
   'common.saveFailed': 'Сақтау мүмкін болмады',
   'common.saved': 'Сақталды',
@@ -677,6 +699,17 @@ const en: Dict = {
   'common.more': 'More',
   'common.copy': 'Copy',
   'common.copied': 'Copied',
+  'common.copyFailed': 'Could not copy',
+  'auth.showPassword': 'Show password',
+  'auth.hidePassword': 'Hide password',
+  'cal.prev': 'Previous month',
+  'cal.next': 'Next month',
+  'nav.menu': 'Menu',
+  'friends.accept': 'Accept request',
+  'friends.decline': 'Decline request',
+  'sched.delete.title': 'Delete the schedule?',
+  'sched.delete.text': 'The repayment schedule will be deleted. Payments already made stay.',
+  'err.belowPaid': 'The amount is less than what has already been paid',
   'common.loadFailed': 'Could not load data',
   'common.saveFailed': 'Could not save',
   'common.saved': 'Saved',
@@ -986,6 +1019,10 @@ function initialLang(): Lang {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(initialLang)
+  // index.html says lang="ru"; screen readers need the language actually shown.
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
   const value = useMemo<I18nCtx>(
     () => ({
       lang,

@@ -10,10 +10,17 @@ import kz.kvit.config.AppConfig;
 import kz.kvit.config.UserSettings;
 import kz.kvit.i18n.I18n;
 import kz.kvit.repository.DebtRepository;
+import kz.kvit.repository.InstallmentRepository;
+import kz.kvit.repository.LoanRepository;
+import kz.kvit.repository.NotificationRepository;
 import kz.kvit.repository.PaymentRepository;
+import kz.kvit.repository.ProfileRepository;
 import kz.kvit.repository.SupabaseClient;
 import kz.kvit.service.AuthService;
 import kz.kvit.service.DebtService;
+import kz.kvit.service.LoanService;
+import kz.kvit.service.NotificationService;
+import kz.kvit.service.ProfileService;
 import kz.kvit.ui.Brand;
 import kz.kvit.ui.LoginView;
 import kz.kvit.ui.MainView;
@@ -29,6 +36,10 @@ public class App extends Application {
     private Stage stage;
     private AuthService authService;
     private DebtService debtService;
+    // Services for the newer screens (settings reminders, notifications, loans); see MainView wiring.
+    private ProfileService profileService;
+    private NotificationService notificationService;
+    private LoanService loanService;
     private MainView mainView;
 
     @Override
@@ -49,7 +60,12 @@ public class App extends Application {
 
         SupabaseClient client = new SupabaseClient(config);
         authService = new AuthService(client);
-        debtService = new DebtService(new DebtRepository(client), new PaymentRepository(client));
+        debtService = new DebtService(new DebtRepository(client), new PaymentRepository(client),
+                new InstallmentRepository(client));
+        ProfileRepository profileRepository = new ProfileRepository(client);
+        profileService = new ProfileService(profileRepository, client);
+        notificationService = new NotificationService(new NotificationRepository(client));
+        loanService = new LoanService(new LoanRepository(client), profileRepository, client);
 
         stage.setTitle(Brand.NAME);
         stage.setMinWidth(980);
@@ -94,7 +110,8 @@ public class App extends Application {
     }
 
     private void showMain(int section) {
-        mainView = new MainView(authService, debtService, settings, section, this::showLogin, this::reloadUi);
+        mainView = new MainView(authService, debtService, profileService, notificationService, loanService, settings, section,
+                this::showLogin, this::reloadUi);
         setContent(mainView.getRoot());
     }
 

@@ -20,6 +20,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -27,8 +28,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import kz.kvit.i18n.I18n;
+import kz.kvit.model.Debt;
+import kz.kvit.model.DebtDirection;
 import kz.kvit.model.DebtOverview;
-import kz.kvit.model.DebtStatus;
+import kz.kvit.model.EffectiveStatus;
 import kz.kvit.model.Payment;
 import kz.kvit.service.CsvExporter;
 import kz.kvit.service.DebtService;
@@ -52,7 +55,8 @@ import java.util.function.Predicate;
 /** Debts: searchable, filterable table on the left and details of the selected debt on the right. */
 public class DebtsView implements Page {
 
-    public enum Filter { ALL, ACTIVE, OVERDUE, PAID, CANCELLED }
+    /** The same filters as on the web site's debts page. */
+    public enum Filter { ALL, OWED, LENT, ACTIVE, OVERDUE, PAID, CANCELLED }
 
     private final DebtService debtService;
     private final ModalHost host;
@@ -109,6 +113,25 @@ public class DebtsView implements Page {
         searchField.requestFocus();
     }
 
+    // ------------------------------------------------------------------ Shared helpers
+
+    /** Status chip from the effective status (overdue and "fully paid" included), like the web StatusChip. */
+    static Label statusChip(DebtOverview overview) {
+        EffectiveStatus status = overview.effectiveStatus();
+        String tone = switch (status) {
+            case ACTIVE -> "active";
+            case OVERDUE -> "danger";
+            case PAID -> "success";
+            case CANCELLED -> "muted";
+        };
+        return Ui.statusChip(status.toString(), tone);
+    }
+
+    /** "Кредитор" for my debts, "Должник" for money owed to me. */
+    static String counterpartyCaption(Debt debt) {
+        return I18n.t(debt.isLent() ? "debt.debtor" : "debts.col.creditor");
+    }
+
     // ------------------------------------------------------------------ Layout
 
     private Node buildListPanel() {
@@ -117,7 +140,7 @@ public class DebtsView implements Page {
         searchField.textProperty().addListener((obs, oldText, text) -> applyFilter());
 
         ToggleGroup chips = new ToggleGroup();
-        HBox chipRow = new HBox(4);
+        FlowPane chipRow = new FlowPane(4, 4);
         for (Filter value : Filter.values()) {
             ToggleButton chip = new ToggleButton(I18n.t("debts.filter." + value.name()));
             chip.getStyleClass().add("filter-chip");
@@ -161,16 +184,24 @@ public class DebtsView implements Page {
                     setGraphic(null);
                     return;
                 }
-                VBox text = new VBox(1, Ui.label(item.debt().getTitle(), "ledger-title"),
-                        Ui.label(item.debt().getCreditorName(), "helper"));
-                setGraphic(text);
+                HBox second = new HBox(6, Ui.label(item.debt().getCreditorName(), "helper"));
+                second.setAlignment(Pos.CENTER_LEFT);
+                if (item.debt().isLent()) {
+                    second.getChildren().add(Ui.label(I18n.t("debt.lentBadge"), "badge", "info"));
+                }
+                if (item.debt().isLinked()) {
+                    Label linked = Icons.create(Icons.DOCUMENT, 11);
+                    Ui.tooltip(linked, I18n.t(item.debt().getLoanId() != null ? "debt.linked.loan" : "debt.linked.split"));
+                    second.getChildren().add(linked);
+                }
+                setGraphic(new VBox(1, Ui.label(item.debt().getTitle(), "ledger-title"), second));
             }
         });
         titleColumn.setPrefWidth(230);
 
-        TableColumn<DebtOverview, BigDecimal> amountColumn = moneyColumn("debts.col.amount",
+        TableColumn<DebtOverview, DebtOverview> amountColumn = moneyColumn("debts.col.amount",
                 overview -> overview.debt().getOriginalAmount());
-        TableColumn<DebtOverview, BigDecimal> remainingColumn = moneyColumn("debts.col.remaining",
+        TableColumn<DebtOverview, DebtOverview> remainingColumn = moneyColumn("debts.col.remaining",
                 DebtOverview::remaining);
 
         TableColumn<DebtOverview, LocalDate> dueColumn = new TableColumn<>(I18n.t("debts.col.due"));
@@ -187,12 +218,12 @@ public class DebtsView implements Page {
 
         TableColumn<DebtOverview, DebtOverview> statusColumn = new TableColumn<>(I18n.t("debts.col.status"));
         statusColumn.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
-        statusColumn.setComparator(Comparator.comparing(DebtsView::statusOrder));
+        statusColumn.setComparator(Comparator.comparing(overview -> overview.effectiveStatus().ordinal()));
         statusColumn.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(DebtOverview item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty || item == null ? null : Ui.statusBadge(item));
+                setGraphic(empty || item == null ? null : statusChip(item));
             }
         });
         statusColumn.setPrefWidth(130);
@@ -229,16 +260,21 @@ public class DebtsView implements Page {
         });
     }
 
-    private TableColumn<DebtOverview, BigDecimal> moneyColumn(String titleKey,
-                                                             Function<DebtOverview, BigDecimal> value) {
-        TableColumn<DebtOverview, BigDecimal> column = new TableColumn<>(I18n.t(titleKey));
-        column.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(value.apply(cell.getValue())));
+    /**
+     * Amount column in the debt's own currency. Sorting compares the plain numbers, so amounts
+     * in different currencies are only ordered by size, never converted.
+     */
+    private TableColumn<DebtOverview, DebtOverview> moneyColumn(String titleKey,
+                                                                Function<DebtOverview, BigDecimal> value) {
+        TableColumn<DebtOverview, DebtOverview> column = new TableColumn<>(I18n.t(titleKey));
+        column.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
+        column.setComparator(Comparator.comparing(value));
         column.getStyleClass().add("amount-column");
         column.setCellFactory(c -> new TableCell<>() {
             @Override
-            protected void updateItem(BigDecimal item, boolean empty) {
+            protected void updateItem(DebtOverview item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : Formats.money(item));
+                setText(empty || item == null ? null : Formats.money(value.apply(item), item.debt().getCurrency()));
                 getStyleClass().remove("amount-cell");
                 getStyleClass().add("amount-cell");
             }
@@ -309,27 +345,17 @@ public class DebtsView implements Page {
                 || overview.debt().getTitle().toLowerCase(Locale.ROOT).contains(query)
                 || overview.debt().getCreditorName().toLowerCase(Locale.ROOT).contains(query)
                 || (overview.debt().getNotes() != null && overview.debt().getNotes().toLowerCase(Locale.ROOT).contains(query));
-        Predicate<DebtOverview> byStatus = overview -> switch (filter) {
+        Predicate<DebtOverview> byFilter = overview -> switch (filter) {
             case ALL -> true;
-            case ACTIVE -> overview.debt().getStatus() == DebtStatus.ACTIVE && !overview.overdue();
-            case OVERDUE -> overview.overdue();
-            case PAID -> overview.debt().getStatus() == DebtStatus.PAID;
-            case CANCELLED -> overview.debt().getStatus() == DebtStatus.CANCELLED;
+            case OWED -> overview.debt().getDirection() == DebtDirection.OWED;
+            case LENT -> overview.debt().getDirection() == DebtDirection.LENT;
+            case ACTIVE -> overview.effectiveStatus() == EffectiveStatus.ACTIVE;
+            case OVERDUE -> overview.effectiveStatus() == EffectiveStatus.OVERDUE;
+            case PAID -> overview.effectiveStatus() == EffectiveStatus.PAID;
+            case CANCELLED -> overview.effectiveStatus() == EffectiveStatus.CANCELLED;
         };
-        filtered.setPredicate(byText.and(byStatus));
+        filtered.setPredicate(byText.and(byFilter));
         countLabel.setText(I18n.t("debts.count", filtered.size(), debts.size()));
-    }
-
-    /** Sort order of the status column: overdue first, cancelled last. */
-    private static int statusOrder(DebtOverview overview) {
-        if (overview.overdue()) {
-            return 0;
-        }
-        return switch (overview.debt().getStatus()) {
-            case ACTIVE -> 1;
-            case PAID -> 2;
-            case CANCELLED -> 3;
-        };
     }
 
     // ------------------------------------------------------------------ Inspector
@@ -344,43 +370,55 @@ public class DebtsView implements Page {
             return;
         }
         inspector.setAlignment(Pos.TOP_LEFT);
+        Debt debt = overview.debt();
+        String currency = debt.getCurrency();
 
-        Label title = Ui.wrapped(overview.debt().getTitle(), "heading-sm");
-        HBox header = new HBox(10, new VBox(2, title, Ui.label(overview.debt().getCreditorName(), "helper")),
-                Ui.hSpacer(), Ui.statusBadge(overview));
+        Label title = Ui.wrapped(debt.getTitle(), "heading-sm");
+        Label who = Ui.label(counterpartyCaption(debt) + ": " + debt.getCreditorName(), "helper");
+        HBox header = new HBox(10, new VBox(2, title, who), Ui.hSpacer(), statusChip(overview));
         header.setAlignment(Pos.TOP_LEFT);
 
-        int percent = Formats.percent(overview.paid(), overview.debt().getOriginalAmount());
-        Label remaining = Ui.label(Formats.money(overview.remaining()), "balance-number");
+        int percent = Formats.percent(overview.paid(), debt.getOriginalAmount());
+        Label remaining = Ui.label(Formats.money(overview.remaining(), currency), "balance-number");
         remaining.setStyle("-fx-font-size: 30px;");
-        VBox balance = new VBox(6, Ui.eyebrow(I18n.t("debts.inspector.remaining")), remaining,
-                meter(percent / 100.0), Ui.label(I18n.t("debts.inspector.repaid", percent), "helper"));
+        VBox balance = new VBox(6, Ui.eyebrow(I18n.t(debt.isLent() ? "debt.remaining.lent" : "debts.inspector.remaining")),
+                remaining, meter(percent / 100.0),
+                Ui.label(I18n.t(debt.isLent() ? "debt.returned.percent" : "debts.inspector.repaid", percent), "helper"));
 
         VBox details = new VBox(8,
-                detail(I18n.t("debts.col.amount"), Formats.money(overview.debt().getOriginalAmount())),
-                detail(I18n.t("debts.col.paid"), Formats.money(overview.paid())),
+                detail(I18n.t("debt.direction"), debt.getDirection().toString()),
+                detail(I18n.t("debts.col.amount"), Formats.money(debt.getOriginalAmount(), currency)),
+                detail(I18n.t(debt.isLent() ? "debt.returned" : "debts.col.paid"), Formats.money(overview.paid(), currency)),
                 detail(I18n.t("debts.col.due"), dueText(overview)),
-                detail(I18n.t("form.rate"), overview.debt().getInterestRate() == null ? "—"
-                        : overview.debt().getInterestRate().stripTrailingZeros().toPlainString() + " %"),
-                detail(I18n.t("debts.inspector.created"), overview.debt().getCreatedAt() == null ? "—"
-                        : Formats.date(overview.debt().getCreatedAt().toLocalDate())));
-        if (overview.debt().getNotes() != null && !overview.debt().getNotes().isBlank()) {
-            details.getChildren().add(Ui.wrapped(overview.debt().getNotes(), "body-muted"));
+                detail(I18n.t("form.rate"), debt.getInterestRate() == null ? "—"
+                        : debt.getInterestRate().stripTrailingZeros().toPlainString() + " %"),
+                detail(I18n.t("debts.inspector.created"), debt.getCreatedAt() == null ? "—"
+                        : Formats.date(debt.getCreatedAt().toLocalDate())));
+        if (!debt.isInTenge()) {
+            details.getChildren().add(Ui.wrapped(I18n.t("debt.currency.note", currency), "helper"));
+        }
+        if (debt.getNotes() != null && !debt.getNotes().isBlank()) {
+            VBox notes = new VBox(4, Ui.label(I18n.t("form.notes"), "detail-key"), Ui.wrapped(debt.getNotes(), "body-muted"));
+            details.getChildren().add(notes);
         }
 
-        Button pay = new Button(I18n.t("debts.inspector.pay"), Icons.create(Icons.PAYMENT, 13));
-        pay.setDisable(overview.debt().getStatus() != DebtStatus.ACTIVE || overview.remaining().signum() <= 0);
-        pay.setOnAction(event -> PaymentForm.open(host, debtService, overview.debt().getId(),
-                () -> load(overview.debt().getId())));
+        Button pay = new Button(I18n.t(debt.isLent() ? "debt.markReturned" : "debts.inspector.pay"),
+                Icons.create(Icons.PAYMENT, 13));
+        pay.setDisable(!overview.isOpen());
+        pay.setOnAction(event -> PaymentForm.open(host, debtService, debt.getId(), () -> load(debt.getId())));
         Button edit = new Button(null, Icons.create(Icons.EDIT, 13));
         edit.getStyleClass().add("icon-button");
         Ui.tooltip(edit, I18n.t("common.edit") + " (Enter)");
         edit.setOnAction(event -> edit(overview));
-        Button delete = new Button(null, Icons.create(Icons.DELETE, 13));
-        delete.getStyleClass().addAll("icon-button", "danger-button");
-        Ui.tooltip(delete, I18n.t("common.delete") + " (Delete)");
-        delete.setOnAction(event -> confirmDelete(overview));
-        HBox actions = new HBox(8, pay, Ui.hSpacer(), edit, delete);
+        HBox actions = new HBox(8, pay, Ui.hSpacer(), edit);
+        // Linked debts are removed together with the loan or split bill on the web site, never alone.
+        if (!debt.isLinked()) {
+            Button delete = new Button(null, Icons.create(Icons.DELETE, 13));
+            delete.getStyleClass().addAll("icon-button", "danger-button");
+            Ui.tooltip(delete, I18n.t("common.delete") + " (Delete)");
+            delete.setOnAction(event -> confirmDelete(overview));
+            actions.getChildren().add(delete);
+        }
         actions.setAlignment(Pos.CENTER_LEFT);
 
         VBox history = new VBox();
@@ -388,17 +426,36 @@ public class DebtsView implements Page {
         historyTitle.setStyle("-fx-font-size: 14px;");
         loadHistory(overview, history);
 
-        inspector.getChildren().setAll(header, balance, Ui.hairline(), details, actions);
-        if (overview.debt().getStatus() == DebtStatus.ACTIVE && overview.remaining().signum() > 0) {
+        inspector.getChildren().setAll(header, balance, Ui.hairline(), details);
+        if (debt.isLinked()) {
+            inspector.getChildren().add(linkedMarker(debt));
+        }
+        inspector.getChildren().add(actions);
+        if (overview.isOpen() && debt.getDirection() == DebtDirection.OWED) {
+            inspector.getChildren().add(new ScheduleSection(debtService, host, overview, () -> load(debt.getId())).getRoot());
+        }
+        if (overview.isOpen()) {
             inspector.getChildren().add(planner(overview));
         }
         inspector.getChildren().addAll(Ui.hairline(), historyTitle, history);
         Motion.fadeIn(inspector, 0);
     }
 
+    /** Explains why some fields of this debt cannot be changed here. */
+    private Node linkedMarker(Debt debt) {
+        boolean loan = debt.getLoanId() != null;
+        HBox title = new HBox(8, Icons.create(Icons.DOCUMENT, 13),
+                Ui.label(I18n.t(loan ? "debt.linked.loan" : "debt.linked.split"), "ledger-title"));
+        title.setAlignment(Pos.CENTER_LEFT);
+        VBox box = new VBox(4, title, Ui.wrapped(I18n.t("debt.linked.text"), "helper"));
+        box.getStyleClass().add("planner");
+        return box;
+    }
+
     /** "What if I pay X per month?" and "how much per month to finish by the due date?" */
     private Node planner(DebtOverview overview) {
         PayoffPlanner planner = new PayoffPlanner();
+        String currency = overview.debt().getCurrency();
         TextField monthlyField = new TextField();
         monthlyField.setPromptText(I18n.t("planner.monthly.prompt"));
         Label result = Ui.wrapped(I18n.t("planner.monthly.hint"), "helper");
@@ -424,7 +481,7 @@ public class DebtsView implements Page {
         LocalDate due = overview.debt().getDueDate();
         if (due != null && due.isAfter(LocalDate.now())) {
             BigDecimal needed = planner.monthlyPaymentToFinishBy(overview.remaining(), due, LocalDate.now());
-            box.getChildren().add(Ui.wrapped(I18n.t("planner.byDue", Formats.date(due), Formats.money(needed)), "helper"));
+            box.getChildren().add(Ui.wrapped(I18n.t("planner.byDue", Formats.date(due), Formats.money(needed, currency)), "helper"));
         }
         box.getStyleClass().add("planner");
         return box;
@@ -456,7 +513,7 @@ public class DebtsView implements Page {
         if (due == null) {
             return I18n.t("debts.noDueDate");
         }
-        if (overview.remaining().signum() <= 0 || overview.debt().getStatus() != DebtStatus.ACTIVE) {
+        if (!overview.isOpen()) {
             return Formats.date(due);
         }
         long days = ChronoUnit.DAYS.between(LocalDate.now(), due);
@@ -481,25 +538,33 @@ public class DebtsView implements Page {
     }
 
     private HBox historyRow(DebtOverview overview, Payment payment) {
-        VBox text = new VBox(1, Ui.label("+" + Formats.money(payment.getAmount()), "ledger-amount", "text-success"),
+        String currency = overview.debt().getCurrency();
+        VBox text = new VBox(1, Ui.label("+" + Formats.money(payment.getAmount(), currency), "ledger-amount", "text-success"),
                 Ui.label(Formats.date(payment.getPaymentDate())
                         + (payment.getNotes() == null ? "" : " · " + payment.getNotes()), "helper"));
-        Button remove = new Button(null, Icons.create(Icons.DELETE, 12));
-        remove.getStyleClass().addAll("quiet", "icon-button");
-        Ui.tooltip(remove, I18n.t("payments.delete"));
-        remove.setOnAction(event -> host.confirm(I18n.t("payments.delete.title"),
-                I18n.t("payments.delete.text", Formats.money(payment.getAmount()), Formats.date(payment.getPaymentDate())),
-                I18n.t("common.delete"), true,
-                () -> BackgroundTask.run(() -> {
-                            debtService.deletePayment(payment);
-                            return null;
-                        },
-                        result -> {
-                            host.toast(I18n.t("toast.paymentDeleted"), false);
-                            load(overview.debt().getId());
-                        },
-                        message -> host.toast(message, true))));
-        HBox row = new HBox(8, text, Ui.hSpacer(), remove);
+        HBox row = new HBox(8, text, Ui.hSpacer());
+        if (payment.isMirror()) {
+            // Recorded by the other party of the loan; it can only be removed on their side.
+            text.getChildren().add(Ui.label(I18n.t("payment.mirror"), "helper"));
+        } else {
+            Button remove = new Button(null, Icons.create(Icons.DELETE, 12));
+            remove.getStyleClass().addAll("quiet", "icon-button");
+            Ui.tooltip(remove, I18n.t("payments.delete"));
+            remove.setOnAction(event -> host.confirm(I18n.t("payments.delete.title"),
+                    I18n.t("payments.delete.text", Formats.money(payment.getAmount(), currency),
+                            Formats.date(payment.getPaymentDate())),
+                    I18n.t("common.delete"), true,
+                    () -> BackgroundTask.run(() -> {
+                                debtService.deletePayment(payment);
+                                return null;
+                            },
+                            result -> {
+                                host.toast(I18n.t("toast.paymentDeleted"), false);
+                                load(overview.debt().getId());
+                            },
+                            message -> host.toast(message, true))));
+            row.getChildren().add(remove);
+        }
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("ledger-row");
         row.setPadding(new Insets(7, 0, 7, 0));
@@ -513,6 +578,10 @@ public class DebtsView implements Page {
     }
 
     private void confirmDelete(DebtOverview overview) {
+        if (overview.debt().isLinked()) {
+            host.toast(I18n.t("debt.error.linkedDelete"), true);
+            return;
+        }
         host.confirm(I18n.t("debts.delete.title"),
                 I18n.t("debts.delete.text", overview.debt().getTitle()),
                 I18n.t("common.delete"), true,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
+import { useFieldControl } from './fieldContext'
 
 export interface SelectOption<T> {
   value: T
@@ -11,6 +12,7 @@ export interface SelectOption<T> {
 // Styled replacement for <select>: same hairline look as the rest of the site,
 // keyboard friendly (arrows, Enter, Esc), closes on outside click.
 export function Select<T extends string | number>({ value, onChange, options, className = '', disabled, placeholder }: { value: T; onChange: (v: T) => void; options: SelectOption<T>[]; className?: string; disabled?: boolean; placeholder?: string }) {
+  const field = useFieldControl()
   const [open, setOpen] = useState(false)
   const [idx, setIdx] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -35,7 +37,12 @@ export function Select<T extends string | number>({ value, onChange, options, cl
         setOpen(false)
       } else setOpen(true)
     }
-    if (e.key === 'Escape') setOpen(false)
+    if (e.key === 'Escape' && open) {
+      // Close only the list, not the dialog the select sits in.
+      e.stopPropagation()
+      setOpen(false)
+    }
+    if (e.key === 'Tab') setOpen(false)
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       if (!open) setOpen(true)
@@ -49,7 +56,7 @@ export function Select<T extends string | number>({ value, onChange, options, cl
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)} onKeyDown={onKey} aria-haspopup="listbox" aria-expanded={open} className="input flex items-center justify-between gap-2 text-left disabled:opacity-50">
+      <button type="button" id={field?.id} aria-describedby={field?.describedBy} aria-invalid={field?.invalid || undefined} disabled={disabled} onClick={() => setOpen((v) => !v)} onKeyDown={onKey} aria-haspopup="listbox" aria-expanded={open} className="input flex items-center justify-between gap-2 text-left disabled:opacity-50">
         <span className={`truncate ${current ? '' : 'text-faint'}`}>{current?.label ?? placeholder ?? '—'}</span>
         <ChevronDown size={15} className={`shrink-0 text-muted transition ${open ? 'rotate-180' : ''}`} />
       </button>

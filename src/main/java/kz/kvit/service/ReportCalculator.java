@@ -2,7 +2,7 @@ package kz.kvit.service;
 
 import kz.kvit.model.CreditorTotal;
 import kz.kvit.model.Debt;
-import kz.kvit.model.DebtStatus;
+import kz.kvit.model.DebtDirection;
 import kz.kvit.model.MonthTotal;
 import kz.kvit.model.Payment;
 import kz.kvit.model.PayoffForecast;
@@ -43,16 +43,14 @@ public class ReportCalculator {
     }
 
     /**
-     * Original and remaining amount per creditor, largest remaining first. Cancelled debts and
-     * creditors that are fully paid off are left out.
+     * Original and remaining amount per creditor, largest remaining first. Only my own debts in
+     * tenge are counted (money owed to me and other currencies would distort the chart).
+     * Cancelled debts and creditors that are fully paid off are left out.
      * Creditors beyond the first MAX_CREDITORS are folded into one "other" row with a null name.
      */
     public List<CreditorTotal> byCreditor(List<Debt> debts, List<Payment> payments) {
         Map<String, CreditorTotal> totals = new LinkedHashMap<>();
-        for (Debt debt : debts) {
-            if (debt.getStatus() == DebtStatus.CANCELLED) {
-                continue;
-            }
+        for (Debt debt : calculator.owedInTenge(debts)) {
             BigDecimal remaining = calculator.remainingBalance(debt, calculator.paymentsOf(debt, payments));
             // Creditor names typed slightly differently ("Kaspi" / "kaspi ") count as one.
             String key = debt.getCreditorName().trim().toLowerCase();
@@ -83,22 +81,21 @@ public class ReportCalculator {
         return result;
     }
 
+    /** Effective status of each of my debts (OWED, any currency), like the web reports page. */
     public StatusBreakdown statuses(List<Debt> debts, List<Payment> payments, LocalDate today) {
         int active = 0;
         int overdue = 0;
         int paid = 0;
         int cancelled = 0;
         for (Debt debt : debts) {
-            switch (debt.getStatus()) {
+            if (debt.getDirection() != DebtDirection.OWED) {
+                continue;
+            }
+            switch (calculator.effectiveStatus(debt, calculator.paymentsOf(debt, payments), today)) {
+                case ACTIVE -> active++;
+                case OVERDUE -> overdue++;
                 case PAID -> paid++;
                 case CANCELLED -> cancelled++;
-                case ACTIVE -> {
-                    if (calculator.isOverdue(debt, calculator.paymentsOf(debt, payments), today)) {
-                        overdue++;
-                    } else {
-                        active++;
-                    }
-                }
             }
         }
         return new StatusBreakdown(active, overdue, paid, cancelled);
@@ -117,7 +114,8 @@ public class ReportCalculator {
         BigDecimal recent = BigDecimal.ZERO;
         for (Payment payment : payments) {
             LocalDate date = payment.getPaymentDate();
-            if (date.isAfter(from) && !date.isAfter(today)) {
+            // The first day of the window counts too, the same as forecastMonths() on the web site.
+            if (!date.isBefore(from) && !date.isAfter(today)) {
                 recent = recent.add(payment.getAmount());
             }
         }

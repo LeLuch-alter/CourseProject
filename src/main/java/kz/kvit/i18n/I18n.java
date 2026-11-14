@@ -13,7 +13,7 @@ public final class I18n {
 
     public enum Language {
         RU("ru", "Русский", "RU"),
-        KK("kk", "Қазақша", "KZ"),
+        KK("kk", "Қазақша", "KK"),
         EN("en", "English", "EN");
 
         private final Locale locale;

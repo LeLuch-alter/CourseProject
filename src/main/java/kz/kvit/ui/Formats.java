@@ -1,6 +1,7 @@
 package kz.kvit.ui;
 
 import kz.kvit.i18n.I18n;
+import kz.kvit.model.Currencies;
 import kz.kvit.model.DateRange;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.util.Map;
 
 /** Formatting of money, dates and numbers in the current language. */
 public final class Formats {
@@ -22,12 +24,29 @@ public final class Formats {
 
     /** 350000.5 -> "350 000,50 ₸" (decimal point in English). */
     public static String money(BigDecimal amount) {
+        return money(amount, Currencies.TENGE);
+    }
+
+    /** 1200 in "USD" -> "1 200,00 $". A null currency means tenge. */
+    public static String money(BigDecimal amount, String currency) {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols();
         boolean english = I18n.getLanguage() == I18n.Language.EN;
         symbols.setGroupingSeparator(english ? ',' : ' ');
         symbols.setDecimalSeparator(english ? '.' : ',');
         DecimalFormat format = new DecimalFormat("#,##0.00", symbols);
-        return format.format(amount) + " ₸";
+        return format.format(amount) + " " + Currencies.symbol(currency);
+    }
+
+    /** Remaining amounts in other currencies on one line: "1 200,00 $ · 300,00 €". Empty map -> "". */
+    public static String moneyByCurrency(Map<String, BigDecimal> amounts) {
+        StringBuilder text = new StringBuilder();
+        for (Map.Entry<String, BigDecimal> entry : amounts.entrySet()) {
+            if (!text.isEmpty()) {
+                text.append("  ·  ");
+            }
+            text.append(money(entry.getValue(), entry.getKey()));
+        }
+        return text.toString();
     }
 
     /** Short form for chart axes: 350 000 -> "350 тыс." / "350K". */

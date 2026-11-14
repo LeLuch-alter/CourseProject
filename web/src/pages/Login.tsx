@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Eye, EyeOff, Sun, Moon, Monitor, ArrowUpRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useI18n, LANGS, type Lang } from '../lib/i18n'
+import { isStrongPassword } from '../lib/calc'
 import { useTheme } from '../lib/theme'
 import { useToast } from '../lib/toast'
 import { Field } from '../components/ui'
@@ -11,8 +12,6 @@ import { TapeHero } from '../components/TapeHero'
 import { Starfield, Planet } from '../components/Starfield'
 
 type Mode = 'signin' | 'signup' | 'reset'
-
-const strongPassword = (p: string) => p.length >= 8 && /\D/.test(p) && /\d/.test(p)
 
 export function LoginPage() {
   const { t, lang, setLang } = useI18n()
@@ -49,7 +48,7 @@ export function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
       } else if (mode === 'signup') {
-        if (!strongPassword(password)) throw new Error(t('err.password'))
+        if (!isStrongPassword(password)) throw new Error(t('err.password'))
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -99,6 +98,7 @@ export function LoginPage() {
               <button
                 key={l}
                 onClick={() => setLang(l as Lang)}
+                aria-pressed={lang === l}
                 className={`h-8 px-2.5 rounded font-mono text-[11px] uppercase transition ${lang === l ? 'bg-ink text-bg' : 'text-muted hover:text-ink'}`}
               >
                 {l}
@@ -122,12 +122,11 @@ export function LoginPage() {
               <h1 className="text-[32px] sm:text-[38px] leading-[1.05] tracking-[-0.02em]">{t('app.tagline')}</h1>
             </div>
             <div className="hairline mb-6" />
-            <AnimatePresence mode="wait">
-              <motion.div key={mode} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <div className="eyebrow">{mode === 'signin' ? t('auth.signIn') : mode === 'signup' ? t('auth.signUp') : t('auth.resetTitle')}</div>
-                <p className="text-muted text-sm mt-2">{mode === 'signin' ? t('auth.welcomeText') : mode === 'signup' ? t('auth.newText') : t('auth.resetText')}</p>
-              </motion.div>
-            </AnimatePresence>
+            {/* No AnimatePresence mode="wait" here: an interrupted exit could leave the heading blank. */}
+            <motion.div key={mode} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              <div className="eyebrow">{mode === 'signin' ? t('auth.signIn') : mode === 'signup' ? t('auth.signUp') : t('auth.resetTitle')}</div>
+              <p className="text-muted text-sm mt-2">{mode === 'signin' ? t('auth.welcomeText') : mode === 'signup' ? t('auth.newText') : t('auth.resetText')}</p>
+            </motion.div>
 
             {done ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 border border-line rounded-lg p-4 text-sm">
@@ -154,7 +153,7 @@ export function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                       />
-                      <button type="button" className="absolute right-1.5 top-1/2 -translate-y-1/2 btn-icon btn-ghost h-8 w-8" onClick={() => setShow((v) => !v)} aria-label="Show">
+                      <button type="button" className="absolute right-1.5 top-1/2 -translate-y-1/2 btn-icon btn-ghost h-8 w-8" onClick={() => setShow((v) => !v)} aria-label={t(show ? 'auth.hidePassword' : 'auth.showPassword')} aria-pressed={show}>
                         {show ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>

@@ -4,11 +4,11 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 
-/** Inline message (like the Fluent InfoBar): error, success or neutral info. Hidden when empty. */
+/** Inline message box: error, warning, success or neutral info. Hidden when empty. */
 public class InfoBar extends HBox {
-    public enum Severity { INFO, SUCCESS, ERROR }
+    public enum Severity { INFO, SUCCESS, WARNING, ERROR }
 
-    private final Label icon = Icons.create(Icons.INFO, 16);
+    private final Label icon = Icons.create(Icons.INFO, 15);
     private final Label message = new Label();
 
     public InfoBar() {
@@ -23,11 +23,15 @@ public class InfoBar extends HBox {
     }
 
     public void show(Severity severity, String text) {
-        getStyleClass().removeAll("error", "success");
+        getStyleClass().removeAll("error", "success", "warning");
         switch (severity) {
             case ERROR -> {
                 getStyleClass().add("error");
                 icon.setText(Icons.ERROR);
+            }
+            case WARNING -> {
+                getStyleClass().add("warning");
+                icon.setText(Icons.WARNING);
             }
             case SUCCESS -> {
                 getStyleClass().add("success");

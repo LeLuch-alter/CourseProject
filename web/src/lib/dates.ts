@@ -1,4 +1,4 @@
-function localIso(d: Date): string {
+export function localIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
@@ -22,10 +22,14 @@ export function formatDateTime(iso: string, locale = 'ru-RU'): string {
 
 export const monthKey = (iso: string): string => iso.slice(0, 7)
 
+// Keeps the day of month when it exists, otherwise clamps to the last day of the
+// target month (Jan 31 + 1 month = Feb 28/29), so a schedule never skips a month.
 export function addMonths(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00')
-  d.setMonth(d.getMonth() + n)
-  return localIso(d)
+  const target = new Date(d.getFullYear(), d.getMonth() + n, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(d.getDate(), lastDay))
+  return localIso(target)
 }
 
 // Whole calendar months between two dates, at least 1 (used by the payoff planner).

@@ -2,11 +2,11 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 import { useData } from '../lib/data'
-import { parseAmount, formatMoney, CURRENCIES, CURRENCY_SYMBOL, type Currency } from '../lib/money'
+import { parseAmount, formatMoney, toTiyn, fromTiyn, CURRENCIES, CURRENCY_SYMBOL, type Currency } from '../lib/money'
 import { useAuth } from '../lib/auth'
 import { Camera, X } from 'lucide-react'
 import { todayIso } from '../lib/dates'
-import { validateDebt, validatePayment, remainingFor, effectiveStatus } from '../lib/calc'
+import { validateDebt, validatePayment, remainingFor, effectiveStatus, paidFor } from '../lib/calc'
 import { createDebt, updateDebt, createPayment, syncStatus, uploadReceipt } from '../api/debts'
 import type { Debt, DebtStatus } from '../api/types'
 import { Field, Modal } from './ui'
@@ -15,7 +15,7 @@ import { Select } from './Select'
 export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () => void; debt?: Debt | null }) {
   const { t } = useI18n()
   const toast = useToast()
-  const { reload } = useData()
+  const { payments, reload } = useData()
   const [title, setTitle] = useState(debt?.title ?? '')
   const [creditor, setCreditor] = useState(debt?.creditor_name ?? '')
   const [amount, setAmount] = useState(debt ? String(debt.original_amount) : '')
@@ -33,6 +33,8 @@ export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () =
     const parsed = parseAmount(amount)
     // Editing keeps a past due date; only new dates are checked against today.
     const errs = validateDebt({ title, creditor, amount: parsed, dueDate: debt && dueDate === debt.due_date ? '' : dueDate, rate: String(rate) })
+    // The amount of an existing debt cannot drop below what has already been paid on it.
+    if (debt && parsed !== null && !errs.amount && toTiyn(parsed) < toTiyn(paidFor(debt, payments))) errs.amount = 'belowPaid'
     setErrors(errs)
     if (Object.keys(errs).length) return
     setBusy(true)
@@ -104,7 +106,7 @@ export function DebtForm({ open, onClose, debt }: { open: boolean; onClose: () =
 }
 
 export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose: () => void; debtId?: number | null }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const toast = useToast()
   const { debts, payments, reload } = useData()
   const payable = useMemo(
@@ -135,11 +137,11 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
     try {
       const receipt_path = photo && user ? await uploadReceipt(user.id, photo) : null
       await createPayment({ debt_id: debt.id, amount: parsed!, payment_date: date, notes: notes.trim() || null, receipt_path })
-      const left = remaining - parsed!
-      await syncStatus(debt, Math.max(0, Math.round(left * 100) / 100))
+      const left = fromTiyn(Math.max(0, toTiyn(remaining) - toTiyn(parsed!)))
+      await syncStatus(debt, left)
       await reload()
-      if (left <= 0) toast.success(t('toast.paidOff', debt.title))
-      else toast.success(t('common.saved'), formatMoney(parsed!, undefined, cur))
+      if (left === 0) toast.success(t('toast.paidOff', debt.title))
+      else toast.success(t('common.saved'), formatMoney(parsed!, locale, cur))
       onClose()
     } catch (err) {
       toast.error(t('common.saveFailed'), err instanceof Error ? err.message : undefined)
@@ -151,7 +153,7 @@ export function PaymentForm({ open, onClose, debtId }: { open: boolean; onClose:
   return (
     <Modal open={open} onClose={onClose} title={t('form.payment.new')}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label={t('form.payment.debt')} hint={debt ? t('form.payment.remaining', formatMoney(remaining, undefined, cur)) : undefined}>
+        <Field label={t('form.payment.debt')} hint={debt ? t('form.payment.remaining', formatMoney(remaining, locale, cur)) : undefined}>
           <Select<number> value={selected} onChange={setSelected} options={payable.map((d) => ({ value: d.id, label: d.title, hint: d.creditor_name }))} />
         </Field>
         <Field label={t('form.amount')} error={(errors.amount && t(`err.${errors.amount}`)) || (errors.form && t(`err.${errors.form}`))}>

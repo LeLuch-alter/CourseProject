@@ -3,6 +3,9 @@
 -- Adds: profiles with avatars, friends, chat, loans between friends with
 -- a signed receipt, notifications, and the "direction" of a debt
 -- (what I owe vs what I lent). Existing debts/payments data is preserved.
+-- NOTE: schema_web_5.sql replaces several grants, policies and functions
+-- defined in the web scripts with fixed versions. Run it after the last
+-- schema_web file and again whenever you re-run this file.
 -- =====================================================================
 
 create extension if not exists pgcrypto;

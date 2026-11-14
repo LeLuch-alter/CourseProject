@@ -1,59 +1,41 @@
 /*
- * Light theme: loaded after styles.css and redefines the same color tokens.
+ * Light theme: loaded after styles.css and redefines only the base color tokens
+ * (same names as the first .root block in styles.css, values from the web light theme).
  * Being a scene stylesheet, it also reaches popups (combo lists, date picker, tooltips).
  */
 
 .root {
-    -canvas: #f4f4f5;
-    -surface-deep: #ffffff;
-    -surface-mini: #ffffff;
-    -surface-popup: #ffffff;
-    -text-strong: #18181b;
-    -text: #27272a;
-    -text-muted: #52525b;
-    -text-helper: #71717a;
-    -text-input: #18181b;
-    -display-gradient: #18181b;
-    -meter-gradient: #3f3f46;
-    -bar-fill: #a1a1aa;
-    -bar-fill-hover: #3f3f46;
+    -bg: #f6f6f4;
+    -surface: #ffffff;
+    -raised: #f0f0ee;
+    -line: #dededc;
+    -line-strong: #c9c9c6;
+    -ink: #101010;
+    -ink-hover: #2c2c2c;
+    -muted: #6e6e6e;
+    -faint: #a0a0a0;
+    -accent2: #6f6759;
+    -good: #168c46;
+    -warn: #aa7814;
+    -bad: #be3232;
 
-    -danger: #c4452c;
-    -success: #1f7a68;
-    -info: #3b6ea5;
-    -neutral: #a1a1aa;
-    -danger-wash: rgba(196, 69, 44, 0.09);
-    -danger-edge: rgba(196, 69, 44, 0.35);
-    -success-wash: rgba(31, 122, 104, 0.09);
-    -success-edge: rgba(31, 122, 104, 0.35);
-    -info-wash: rgba(59, 110, 165, 0.09);
+    -wash: rgba(16, 16, 16, 0.03);
+    -wash-hover: rgba(16, 16, 16, 0.05);
+    -wash-pressed: rgba(16, 16, 16, 0.09);
+    -edge-button: rgba(16, 16, 16, 0.60);
+    -edge-focus: rgba(16, 16, 16, 0.55);
+    -bad-wash: rgba(190, 50, 50, 0.07);
+    -bad-edge: rgba(190, 50, 50, 0.45);
+    -good-wash: rgba(22, 140, 70, 0.07);
+    -good-edge: rgba(22, 140, 70, 0.40);
+    -warn-wash: rgba(170, 120, 20, 0.08);
+    -bar-fill: #b4b4b2;
+    -shadow: rgba(0, 0, 0, 0.12);
+    -backdrop: rgba(16, 16, 16, 0.30);
+    -topbar-bg: rgba(246, 246, 244, 0.94);
+    -avatar-bg: #8a8178;
 
-    -edge: rgba(0, 0, 0, 0.09);
-    -edge-strong: rgba(0, 0, 0, 0.18);
-    -edge-focus: rgba(0, 0, 0, 0.45);
-    -wash: rgba(0, 0, 0, 0.04);
-    -wash-hover: rgba(0, 0, 0, 0.07);
-    -wash-pressed: rgba(0, 0, 0, 0.11);
-    -glass-top: #ffffff;
-    -glass-bottom: #ffffff;
-    -highlight-edge: #ffffff;
-    -inner-glow: transparent;
-    -halo: rgba(0, 0, 0, 0.08);
-    -input-bg: #ffffff;
-    -input-bg-focus: #ffffff;
-    -prompt: rgba(0, 0, 0, 0.38);
-    -track: rgba(0, 0, 0, 0.08);
-    -chip-bg: #ffffff;
-    -topbar-bg: #fafafa;
-    -backdrop: rgba(0, 0, 0, 0.28);
-    -row-hover: rgba(0, 0, 0, 0.025);
-    -row-selected: rgba(0, 0, 0, 0.06);
-
-    -fx-base: #ececee;
+    -fx-base: #ececea;
     -fx-control-inner-background: #ffffff;
     -fx-control-inner-background-alt: #ffffff;
-}
-
-.glass-panel {
-    -fx-effect: dropshadow(gaussian, -halo, 12, 0, 0, 2);
 }

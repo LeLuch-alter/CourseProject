@@ -113,7 +113,7 @@ public class PaymentForm {
     }
 
     private void showRemaining(DebtOverview debt) {
-        remainingLabel.setText(debt == null ? "" : I18n.t("form.payment.remaining", Formats.money(debt.remaining())));
+        remainingLabel.setText(debt == null ? "" : I18n.t("form.payment.remaining", Formats.money(debt.remaining(), debt.debt().getCurrency())));
     }
 
     private void save() {
@@ -134,7 +134,7 @@ public class PaymentForm {
                 () -> debtService.addPayment(payment),
                 saved -> {
                     host.closeModal();
-                    host.toast(I18n.t("toast.paymentAdded", Formats.money(saved.getAmount())), false);
+                    host.toast(I18n.t("toast.paymentAdded", Formats.money(saved.getAmount(), debtBox.getValue().debt().getCurrency())), false);
                     onSaved.run();
                 },
                 message -> {
@@ -149,7 +149,8 @@ public class PaymentForm {
         protected void updateItem(DebtOverview item, boolean empty) {
             super.updateItem(item, empty);
             setText(empty || item == null ? null
-                    : item.debt().getTitle() + "  ·  " + item.debt().getCreditorName());
+                    : item.debt().getTitle() + "  ·  " + item.debt().getCreditorName()
+                    + (item.debt().isLent() ? "  ·  " + I18n.t("debt.lentBadge") : ""));
         }
     }
 }

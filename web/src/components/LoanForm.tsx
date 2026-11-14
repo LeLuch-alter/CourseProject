@@ -4,7 +4,7 @@ import { HandCoins, HandHelping } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 import { parseAmount } from '../lib/money'
-import { todayIso } from '../lib/dates'
+import { localIso, todayIso } from '../lib/dates'
 import { createLoan } from '../api/social'
 import type { Profile } from '../api/types'
 import { Field, Modal } from './ui'
@@ -16,6 +16,12 @@ export const formatCard = (c: string) =>
     .replace(/\D/g, '')
     .slice(0, 16)
     .replace(/(\d{4})(?=\d)/g, '$1 ')
+
+// A loan must be due after today (the check below), so the date picker starts tomorrow.
+function tomorrowIso(): string {
+  const d = new Date()
+  return localIso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1))
+}
 
 export function LoanForm({ open, onClose, kind, friends, initialFriendId }: { open: boolean; onClose: () => void; kind: 'lend' | 'borrow'; friends: Profile[]; initialFriendId?: string }) {
   const { t } = useI18n()
@@ -72,7 +78,7 @@ export function LoanForm({ open, onClose, kind, friends, initialFriendId }: { op
             <input className="input num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" autoFocus />
           </Field>
           <Field label={t('loans.due')} error={errors.due && t(`err.${errors.due}`)}>
-            <input className="input" type="date" min={todayIso()} value={due} onChange={(e) => setDue(e.target.value)} />
+            <input className="input" type="date" min={tomorrowIso()} value={due} onChange={(e) => setDue(e.target.value)} />
           </Field>
         </div>
         <div className="grid sm:grid-cols-[1fr_140px] gap-4">

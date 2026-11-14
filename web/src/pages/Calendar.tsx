@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Receipt, CalendarClock, X } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
@@ -11,6 +11,14 @@ import { Select } from '../components/Select'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`
+
+// Monday..Sunday of the week that contains the given day.
+function weekOf(day: string): { from: string; to: string } {
+  const d = new Date(day + 'T00:00:00')
+  const from = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7))
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6)
+  return { from: iso(from.getFullYear(), from.getMonth(), from.getDate()), to: iso(to.getFullYear(), to.getMonth(), to.getDate()) }
+}
 
 // Selection is a date range [from, to]. Click = one day, Shift+click = extend from the anchor.
 export function CalendarPage() {
@@ -47,16 +55,8 @@ export function CalendarPage() {
     setCursor(new Date(y, m + n, 1))
   }
   const preset = (kind: 'today' | 'week' | 'month') => {
-    const d = new Date(today + 'T00:00:00')
     if (kind === 'today') setRange({ from: today, to: today })
-    if (kind === 'week') {
-      const dow = (d.getDay() + 6) % 7
-      const from = new Date(d)
-      from.setDate(d.getDate() - dow)
-      const to = new Date(from)
-      to.setDate(from.getDate() + 6)
-      setRange({ from: iso(from.getFullYear(), from.getMonth(), from.getDate()), to: iso(to.getFullYear(), to.getMonth(), to.getDate()) })
-    }
+    if (kind === 'week') setRange(weekOf(today))
     if (kind === 'month') setRange({ from: iso(y, m, 1), to: iso(y, m, daysInMonth) })
     if (kind !== 'month') setCursor(new Date(today.slice(0, 7) + '-01T00:00:00'))
   }
@@ -70,7 +70,15 @@ export function CalendarPage() {
   const months = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, i, 1)))
   const years = Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i)
   const single = range.from === range.to
-  const presetValue: 'today' | 'week' | 'month' = single && range.from === today ? 'today' : range.from === iso(y, m, 1) && range.to === iso(y, m, daysInMonth) ? 'month' : 'week'
+  const week = weekOf(today)
+  // A custom Shift+click range matches no preset, so no button is highlighted for it.
+  const presetValue: 'today' | 'week' | 'month' | null =
+    single && range.from === today ? 'today' : range.from === iso(y, m, 1) && range.to === iso(y, m, daysInMonth) ? 'month' : range.from === week.from && range.to === week.to ? 'week' : null
+  // Payments in different currencies are listed separately, never added together.
+  const paidByCurrency: Record<string, Array<string | number>> = {}
+  for (const p of selPay) (paidByCurrency[debtById[p.debt_id]?.currency ?? 'KZT'] ??= []).push(p.amount)
+  const paidEntries = Object.entries(paidByCurrency)
+  const paidText = paidEntries.length ? paidEntries.map(([c, v]) => formatMoney(sum(v), locale, c)).join(' · ') : formatMoney(0, locale)
 
   return (
     <div>
@@ -92,14 +100,14 @@ export function CalendarPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4 gap-2">
-            <button className="btn-icon btn-ghost" onClick={() => move(-1)} aria-label="prev">
+            <button className="btn-icon btn-ghost" onClick={() => move(-1)} aria-label={t('cal.prev')}>
               <ChevronLeft size={18} />
             </button>
             <div className="flex items-center gap-2">
               <Select<number> className="w-40 capitalize [&>button]:h-9" value={m} onChange={(v) => setCursor(new Date(y, v, 1))} options={months.map((name, i) => ({ value: i, label: name }))} />
               <Select<number> className="w-24 num [&>button]:h-9" value={y} onChange={(v) => setCursor(new Date(v, m, 1))} options={years.map((yy) => ({ value: yy, label: String(yy) }))} />
             </div>
-            <button className="btn-icon btn-ghost" onClick={() => move(1)} aria-label="next">
+            <button className="btn-icon btn-ghost" onClick={() => move(1)} aria-label={t('cal.next')}>
               <ChevronRight size={18} />
             </button>
           </div>
@@ -108,8 +116,8 @@ export function CalendarPage() {
               <div key={w}>{w}</div>
             ))}
           </div>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={ym} initial={{ opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 * dir }} transition={{ duration: 0.2 }} className="grid grid-cols-7 gap-1.5 select-none">
+          {/* Enter-only animation keyed by month: with AnimatePresence mode="wait" a quick double switch could leave the grid blank. */}
+          <motion.div key={ym} initial={{ opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="grid grid-cols-7 gap-1.5 select-none">
               {Array.from({ length: firstDow }).map((_, i) => (
                 <div key={`e${i}`} />
               ))}
@@ -125,6 +133,8 @@ export function CalendarPage() {
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={(e) => pick(day, e.shiftKey)}
+                    aria-pressed={sel}
+                    aria-label={formatDate(day, locale)}
                     className={`relative h-14 sm:h-16 rounded-lg border text-sm flex flex-col items-start justify-between p-2 transition ${sel ? (edge ? 'border-ink bg-ink text-bg' : 'border-line bg-ink/10') : 'border-line hover:bg-raised'} ${isToday && !sel ? 'ring-1 ring-accent2 border-accent2' : ''}`}
                   >
                     <span className="num leading-none">{i + 1}</span>
@@ -138,8 +148,7 @@ export function CalendarPage() {
                   </motion.button>
                 )
               })}
-            </motion.div>
-          </AnimatePresence>
+          </motion.div>
         </div>
 
         <div className="card p-5 h-fit">
@@ -163,11 +172,10 @@ export function CalendarPage() {
             </div>
             <div className="border border-line rounded-lg p-3">
               <div className="eyebrow">{t('cal.paid')}</div>
-              <div className="text-xl num mt-1">{formatMoney(sum(selPay.map((p) => p.amount)), locale)}</div>
+              <div className="text-xl num mt-1">{paidText}</div>
             </div>
           </div>
-          <AnimatePresence mode="wait">
-            <motion.div key={range.from + range.to} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 space-y-1.5 max-h-[50vh] overflow-y-auto">
+          <motion.div key={range.from + range.to} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-1.5 max-h-[50vh] overflow-y-auto">
               {selectedDays.length === 0 ? (
                 <div className="text-sm text-muted">{t('cal.nothing')}</div>
               ) : (
@@ -199,8 +207,7 @@ export function CalendarPage() {
                   </div>
                 ))
               )}
-            </motion.div>
-          </AnimatePresence>
+          </motion.div>
         </div>
       </div>
     </div>

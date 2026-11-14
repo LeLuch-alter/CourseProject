@@ -1,6 +1,7 @@
 package kz.kvit.service;
 
 import kz.kvit.i18n.I18n;
+import kz.kvit.model.Currencies;
 import kz.kvit.model.Debt;
 import kz.kvit.model.Payment;
 
@@ -51,6 +52,12 @@ public class DebtValidator {
         }
         if (debt.getStatus() == null) {
             throw new ValidationException(I18n.t("error.status"));
+        }
+        if (debt.getDirection() == null) {
+            throw new ValidationException(I18n.t("debt.error.direction"));
+        }
+        if (!Currencies.isSupported(debt.getCurrency())) {
+            throw new ValidationException(I18n.t("debt.error.currency", String.join(", ", Currencies.ALL)));
         }
         checkNotes(debt.getNotes());
 

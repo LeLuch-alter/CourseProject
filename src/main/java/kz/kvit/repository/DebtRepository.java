@@ -3,7 +3,9 @@ package kz.kvit.repository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import kz.kvit.i18n.I18n;
+import kz.kvit.model.Currencies;
 import kz.kvit.model.Debt;
+import kz.kvit.model.DebtDirection;
 import kz.kvit.model.DebtStatus;
 
 import java.time.LocalDate;
@@ -57,7 +59,9 @@ public class DebtRepository {
         client.delete(TABLE + "?id=eq." + debtId);
     }
 
-    // id, user_id and created_at are not sent: the database fills them in itself.
+    // The same fields the web site sends (web/src/api/debts.ts). id, user_id and created_at are
+    // filled in by the database. loan_id, split_id and counterparty_id are only set by the
+    // database functions for friend loans and split bills, so the app never sends them.
     private ObjectNode toJson(Debt debt) {
         ObjectNode json = client.createObject();
         json.put("title", debt.getTitle().trim());
@@ -67,6 +71,8 @@ public class DebtRepository {
         json.put("due_date", debt.getDueDate() == null ? null : debt.getDueDate().toString());
         json.put("status", debt.getStatus().name());
         json.put("notes", blankToNull(debt.getNotes()));
+        json.put("currency", debt.getCurrency() == null ? Currencies.TENGE : debt.getCurrency());
+        json.put("direction", debt.getDirection().name());
         return json;
     }
 
@@ -80,7 +86,15 @@ public class DebtRepository {
         debt.setCreatedAt(OffsetDateTime.parse(row.get("created_at").asText()));
         debt.setDueDate(row.hasNonNull("due_date") ? LocalDate.parse(row.get("due_date").asText()) : null);
         debt.setStatus(DebtStatus.valueOf(row.get("status").asText()));
-        debt.setNotes(row.hasNonNull("notes") ? row.get("notes").asText() : null);
+        debt.setNotes(textOrNull(row, "notes"));
+        debt.setUserId(textOrNull(row, "user_id"));
+        // Rows from a database without the web columns are treated like the web defaults.
+        debt.setDirection("LENT".equals(textOrNull(row, "direction")) ? DebtDirection.LENT : DebtDirection.OWED);
+        String currency = textOrNull(row, "currency");
+        debt.setCurrency(currency == null ? Currencies.TENGE : currency);
+        debt.setLoanId(textOrNull(row, "loan_id"));
+        debt.setSplitId(textOrNull(row, "split_id"));
+        debt.setCounterpartyId(textOrNull(row, "counterparty_id"));
         return debt;
     }
 
@@ -93,5 +107,9 @@ public class DebtRepository {
 
     static String blankToNull(String text) {
         return text == null || text.isBlank() ? null : text.trim();
+    }
+
+    static String textOrNull(JsonNode row, String field) {
+        return row.hasNonNull(field) ? row.get(field).asText() : null;
     }
 }

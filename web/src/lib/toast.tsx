@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, AlertTriangle, Info, X, Bell } from 'lucide-react'
+import { useI18n } from './i18n'
 
 export type ToastKind = 'success' | 'error' | 'info' | 'notice'
 export interface Toast {
@@ -23,6 +24,7 @@ const Ctx = createContext<ToastCtx | null>(null)
 let seq = 1
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t: tr } = useI18n()
   const [items, setItems] = useState<Toast[]>([])
 
   const dismiss = useCallback((id: number) => setItems((xs) => xs.filter((x) => x.id !== id)), [])
@@ -60,7 +62,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={value}>
       {children}
-      <div className="fixed z-[100] bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed z-[100] bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col gap-2 pointer-events-none" role="status" aria-live="polite">
         <AnimatePresence initial={false}>
           {items.map((t) => (
             <motion.div
@@ -87,7 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   e.stopPropagation()
                   dismiss(t.id)
                 }}
-                aria-label="Close"
+                aria-label={tr('common.close')}
               >
                 <X size={16} />
               </button>

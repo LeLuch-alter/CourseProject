@@ -88,6 +88,21 @@ class DebtValidatorTest {
                 () -> validator.validatePayment(payment("100", TODAY.plusDays(1)), new BigDecimal("500"), TODAY));
     }
 
+    @Test
+    void currencyMustBeSupportedAndDirectionSet() {
+        Debt dollars = validDebt();
+        dollars.setCurrency("USD");
+        assertDoesNotThrow(() -> validator.validateDebt(dollars, BigDecimal.ZERO));
+
+        Debt unknownCurrency = validDebt();
+        unknownCurrency.setCurrency("GBP");
+        assertThrows(ValidationException.class, () -> validator.validateDebt(unknownCurrency, BigDecimal.ZERO));
+
+        Debt noDirection = validDebt();
+        noDirection.setDirection(null);
+        assertThrows(ValidationException.class, () -> validator.validateDebt(noDirection, BigDecimal.ZERO));
+    }
+
     private static Debt validDebt() {
         Debt debt = new Debt();
         debt.setTitle("Кредит");

@@ -39,7 +39,7 @@ public class SupabaseClient {
     // Tokens live only in memory and are never written to disk: the user logs in on every start.
     private Session session;
 
-    private record Session(String accessToken, String refreshToken, Instant expiresAt, String email) {
+    private record Session(String accessToken, String refreshToken, Instant expiresAt, String email, String userId) {
     }
 
     public SupabaseClient(AppConfig config) {
@@ -100,6 +100,14 @@ public class SupabaseClient {
         return session == null ? null : session.email();
     }
 
+    /** Id (uuid) of the logged-in user, needed to tell "my side" of a loan from the friend's side. */
+    public synchronized String getCurrentUserId() {
+        if (session == null || session.userId().isEmpty()) {
+            throw new DataAccessException(I18n.t("error.db.notSignedIn"));
+        }
+        return session.userId();
+    }
+
     // ------------------------------------------------------------ REST API
 
     public JsonNode get(String path) {
@@ -122,6 +130,11 @@ public class SupabaseClient {
 
     public void delete(String path) {
         send(restRequest(path).DELETE().build());
+    }
+
+    /** Calls a Postgres function exposed by PostgREST, e.g. rpc("accept_loan", args). */
+    public JsonNode rpc(String functionName, JsonNode arguments) {
+        return send(restRequest("/rest/v1/rpc/" + functionName).POST(jsonBody(arguments)).build());
     }
 
     // ------------------------------------------------------------- Helpers
@@ -171,7 +184,8 @@ public class SupabaseClient {
                 response.get("access_token").asText(),
                 response.get("refresh_token").asText(),
                 Instant.now().plusSeconds(expiresInSeconds),
-                response.path("user").path("email").asText(""));
+                response.path("user").path("email").asText(""),
+                response.path("user").path("id").asText(""));
     }
 
     private HttpRequest.BodyPublisher jsonBody(JsonNode body) {
@@ -236,7 +250,8 @@ public class SupabaseClient {
         };
         if (text == null) {
             text = switch (code) {
-                case "PGRST205" -> I18n.t("error.db.noTables");
+                case "PGRST205", "42P01" -> I18n.t("error.db.noTables");
+                case "PGRST204", "42703" -> I18n.t("error.db.missingColumn");
                 case "PGRST301", "PGRST303" -> I18n.t("error.db.sessionExpired");
                 case "42501" -> I18n.t("error.db.forbidden");
                 case "23503" -> I18n.t("error.db.foreignKey");
@@ -254,6 +269,6 @@ public class SupabaseClient {
                         : I18n.t("error.db.requestFailed", status, message);
             };
         }
-        return new DataAccessException(text);
+        return new DataAccessException(text, code);
     }
 }

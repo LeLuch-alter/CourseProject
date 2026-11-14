@@ -21,20 +21,34 @@ export function AddFriendPage() {
   const [state, setState] = useState<'idle' | 'sent' | 'friends' | 'self'>('idle')
 
   useEffect(() => {
+    let current = true
     findByUsername(username)
       .then(async (p) => {
+        if (!current) return
         setProfile(p)
         if (!p) return
         if (p.id === user!.id) {
           setState('self')
           return
         }
-        const fs = await listFriendships()
-        const rel = fs.find((f) => f.requester_id === p.id || f.addressee_id === p.id)
-        if (rel) setState(rel.status === 'ACCEPTED' ? 'friends' : 'sent')
+        // If only this check fails the person is still shown; adding again is rejected by the server anyway.
+        try {
+          const fs = await listFriendships()
+          const rel = fs.find((f) => f.requester_id === p.id || f.addressee_id === p.id)
+          if (current && rel) setState(rel.status === 'ACCEPTED' ? 'friends' : 'sent')
+        } catch (e) {
+          console.error('Could not check the friendship', e)
+        }
       })
-      .catch(() => setProfile(null))
-  }, [username, user])
+      .catch((e) => {
+        if (!current) return
+        setProfile(null)
+        toast.error(t('common.loadFailed'), e instanceof Error ? e.message : undefined)
+      })
+    return () => {
+      current = false
+    }
+  }, [username, user, t, toast])
 
   async function add() {
     if (!profile) return

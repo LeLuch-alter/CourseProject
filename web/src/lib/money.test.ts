@@ -38,4 +38,12 @@ describe('csv import', () => {
     expect(rows).toEqual([])
     expect(errors.map((e) => e.line)).toEqual([2, 3, 4])
   })
+
+  it('keeps line breaks inside quoted notes and counts lines correctly after them', () => {
+    const text = 'h\r\nPhone;Aida;100;0;100;;ACTIVE;"first line\r\nsecond; line"\r\nBad;X;abc;0;0;;ACTIVE;\r\n'
+    const { rows, errors } = parseCsv(text)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].notes).toBe('first line\nsecond; line')
+    expect(errors).toEqual([{ line: 4, reason: 'amount' }])
+  })
 })

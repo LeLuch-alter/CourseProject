@@ -21,7 +21,9 @@ export function planForModel(plan: Plan | null) {
 
 export function buildSnapshot(debts: Debt[], payments: Payment[], friends: Profile[], today = todayIso()) {
   const s = summarize(debts, payments)
-  const own = payments.filter((p) => debts.find((d) => d.id === p.debt_id)?.direction === 'OWED')
+  // Averages and forecasts are in tenge, so only payments on live tenge OWED debts count.
+  const ownIds = new Set(debts.filter((d) => d.direction === 'OWED' && d.status !== 'CANCELLED' && currencyOf(d) === 'KZT').map((d) => d.id))
+  const own = payments.filter((p) => ownIds.has(p.debt_id))
   const avg = averageMonthlyPayment(own, today)
   const lastMonth = today.slice(0, 7)
   const strategies: Strategy[] = ['deadline', 'snowball', 'avalanche']

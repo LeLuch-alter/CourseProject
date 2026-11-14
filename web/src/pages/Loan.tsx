@@ -34,23 +34,30 @@ export function LoanPage() {
   const [confirm, setConfirm] = useState<'DECLINED' | 'CANCELLED' | null>(null)
   const [paying, setPaying] = useState(false)
   const receiptRef = useRef<HTMLDivElement>(null)
+  // Opening another receipt while one is loading: only the answer for the current id is shown.
+  const currentId = useRef(id)
 
   const load = useCallback(async () => {
     if (!id) return
     try {
       const l = await getLoan(id)
+      const ps = l ? await getProfiles([l.lender_id, l.borrower_id]) : {}
+      if (currentId.current !== id) return
       setLoan(l)
-      if (l) setProfiles(await getProfiles([l.lender_id, l.borrower_id]))
+      setProfiles(ps)
     } catch (e) {
+      if (currentId.current !== id) return
       toast.error(t('common.loadFailed'), e instanceof Error ? e.message : undefined)
     } finally {
-      setLoading(false)
+      if (currentId.current === id) setLoading(false)
     }
   }, [id, t, toast])
 
   useEffect(() => {
+    currentId.current = id
+    setLoading(true)
     void load()
-  }, [load])
+  }, [id, load])
   useEffect(() => {
     const ch = supabase
       .channel(`loan-${id}`)
@@ -160,7 +167,7 @@ export function LoanPage() {
             <div className="font-mono mt-0.5 flex items-center gap-2">
               {showCard && loan.borrower_card ? formatCard(loan.borrower_card) : masked}
               {loan.borrower_card && (
-                <button className="text-faint hover:text-ink" onClick={() => setShowCard((v) => !v)} title={showCard ? t('loans.cardHide') : t('loans.cardShow')}>
+                <button className="text-faint hover:text-ink" onClick={() => setShowCard((v) => !v)} title={showCard ? t('loans.cardHide') : t('loans.cardShow')} aria-label={showCard ? t('loans.cardHide') : t('loans.cardShow')}>
                   {showCard ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               )}

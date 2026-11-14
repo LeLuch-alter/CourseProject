@@ -53,7 +53,8 @@ public class PaymentRepository {
         payment.setDebtId(row.get("debt_id").asLong());
         payment.setAmount(row.get("amount").decimalValue());
         payment.setPaymentDate(LocalDate.parse(row.get("payment_date").asText()));
-        payment.setNotes(row.hasNonNull("notes") ? row.get("notes").asText() : null);
+        payment.setNotes(DebtRepository.textOrNull(row, "notes"));
+        payment.setMirrorOf(row.hasNonNull("mirror_of") ? row.get("mirror_of").asLong() : null);
         return payment;
     }
 }

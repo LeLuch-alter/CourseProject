@@ -42,14 +42,30 @@ Deno.serve(async (req) => {
       await sendTelegram(chatId, 'Это бот Kvit. Откройте сайт → Настройки → «Подключить Telegram» и отправьте сюда код, который покажет сайт.')
       return new Response('ok')
     }
-    const { data: row } = await db.from('telegram_links').select('user_id, code_until').eq('link_code', m[1]).maybeSingle()
+    const { data: row, error: findError } = await db.from('telegram_links').select('user_id, code_until').eq('link_code', m[1]).maybeSingle()
+    if (findError) {
+      console.error('Could not look up link code', findError.message)
+      await sendTelegram(chatId, 'Не удалось проверить код, попробуйте ещё раз через минуту.')
+      return new Response('ok')
+    }
     if (!row || !row.code_until || new Date(row.code_until) < new Date()) {
       await sendTelegram(chatId, 'Код устарел. Нажмите «Подключить Telegram» на сайте ещё раз.')
       return new Response('ok')
     }
     // one chat belongs to one account: detach it from any previous account first
-    await db.from('telegram_links').update({ chat_id: null }).eq('chat_id', chatId)
-    await db.from('telegram_links').update({ chat_id: chatId, link_code: null, code_until: null, linked_at: new Date().toISOString() }).eq('user_id', row.user_id)
+    const detach = await db.from('telegram_links').update({ chat_id: null }).eq('chat_id', chatId).neq('user_id', row.user_id)
+    const link = detach.error
+      ? null
+      : await db
+          .from('telegram_links')
+          .update({ chat_id: chatId, link_code: null, code_until: null, linked_at: new Date().toISOString() })
+          .eq('user_id', row.user_id)
+    const linkError = detach.error ?? link?.error
+    if (linkError) {
+      console.error('Could not link Telegram chat', linkError.message)
+      await sendTelegram(chatId, 'Не удалось подключить Kvit, попробуйте ещё раз через минуту.')
+      return new Response('ok')
+    }
     await sendTelegram(chatId, '✅ Kvit подключён. Сюда будут приходить напоминания о сроках долгов.')
     return new Response('ok')
   }
@@ -65,5 +81,11 @@ Deno.serve(async (req) => {
   const until = new Date(Date.now() + 15 * 60 * 1000).toISOString()
   const { error } = await db.from('telegram_links').upsert({ user_id: user.id, link_code: code, code_until: until }, { onConflict: 'user_id' })
   if (error) return json({ error: error.message }, 500)
-  return json({ url: `https://t.me/${await getBotUsername()}?start=${code}`, code })
+  try {
+    return json({ url: `https://t.me/${await getBotUsername()}?start=${code}`, code })
+  } catch (e) {
+    // without this the function crashed and the browser saw a CORS error instead of a message
+    console.error('Telegram getMe failed', e instanceof Error ? e.message : e)
+    return json({ error: 'telegram_unavailable' }, 502)
+  }
 })

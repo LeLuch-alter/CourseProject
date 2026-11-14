@@ -160,7 +160,7 @@ public class DashboardView implements Page {
         stopLoading();
         DashboardSummary summary = data.summary();
 
-        if (summary.totalOriginal().signum() == 0) {
+        if (summary.isEmpty()) {
             Button add = new Button(I18n.t("debts.new"), Icons.create(Icons.ADD, 13));
             add.setOnAction(event -> createNew());
             VBox panel = new VBox(Ui.emptyState(Icons.LIST, I18n.t("dashboard.empty.title"),
@@ -179,7 +179,11 @@ public class DashboardView implements Page {
         HBox.setHgrow(attention, Priority.ALWAYS);
         HBox.setHgrow(payments, Priority.ALWAYS);
 
-        content.getChildren().setAll(balance, lists);
+        content.getChildren().setAll(balance);
+        if (summary.lentTotal().signum() > 0 || !summary.foreignLent().isEmpty() || !summary.foreignOwed().isEmpty()) {
+            content.getChildren().add(othersPanel(summary));
+        }
+        content.getChildren().add(lists);
         if (summary.overdueCount() > 0) {
             content.getChildren().add(0, overdueBanner(data));
         }
@@ -191,6 +195,7 @@ public class DashboardView implements Page {
     private Node overdueBanner(DashboardData data) {
         BigDecimal overdueSum = data.needingAttention().stream()
                 .filter(DebtOverview::overdue)
+                .filter(overview -> !overview.debt().isLent() && overview.debt().isInTenge())
                 .map(DebtOverview::remaining)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         Label text = Ui.wrapped(I18n.t("dashboard.overdueBanner", data.summary().overdueCount(),
@@ -236,6 +241,46 @@ public class DashboardView implements Page {
                 Ui.wrapped(I18n.t("dashboard.note"), "helper"));
         panel.getStyleClass().add("glass-panel");
         panel.setPadding(new Insets(28));
+        return panel;
+    }
+
+    /**
+     * "Owed to me" in tenge and the remaining amounts in other currencies.
+     * They are shown apart from the main balance on purpose: money others owe me is not my debt,
+     * and Kvit never converts currencies into tenge.
+     */
+    private Node othersPanel(DashboardSummary summary) {
+        HBox row = new HBox(24);
+        row.setAlignment(Pos.CENTER_LEFT);
+        if (summary.lentTotal().signum() > 0) {
+            int returnedPercent = Formats.percent(summary.lentReturned(), summary.lentTotal());
+            VBox lent = new VBox(4,
+                    Ui.eyebrow(I18n.t("dashboard.lent.title")),
+                    Ui.label(Formats.money(summary.lentRemaining()), "stat-value"),
+                    Ui.label(I18n.t("dashboard.lent.returned", Formats.money(summary.lentReturned()),
+                            Formats.money(summary.lentTotal()), returnedPercent), "helper"));
+            row.getChildren().add(lent);
+        }
+        if (!summary.foreignOwed().isEmpty() || !summary.foreignLent().isEmpty()) {
+            if (!row.getChildren().isEmpty()) {
+                row.getChildren().add(verticalLine());
+            }
+            VBox foreign = new VBox(4, Ui.eyebrow(I18n.t("dashboard.foreign.title")));
+            if (!summary.foreignOwed().isEmpty()) {
+                foreign.getChildren().add(Ui.label(I18n.t("dashboard.foreign.owed",
+                        Formats.moneyByCurrency(summary.foreignOwed())), "detail-value"));
+            }
+            if (!summary.foreignLent().isEmpty()) {
+                foreign.getChildren().add(Ui.label(I18n.t("dashboard.foreign.lent",
+                        Formats.moneyByCurrency(summary.foreignLent())), "detail-value"));
+            }
+            foreign.getChildren().add(Ui.wrapped(I18n.t("dashboard.foreign.note"), "helper"));
+            HBox.setHgrow(foreign, Priority.ALWAYS);
+            row.getChildren().add(foreign);
+        }
+        VBox panel = new VBox(row);
+        panel.getStyleClass().add("glass-panel");
+        panel.setPadding(new Insets(20, 28, 20, 28));
         return panel;
     }
 
@@ -306,11 +351,12 @@ public class DashboardView implements Page {
 
         VBox text = new VBox(2,
                 Ui.label(overview.debt().getTitle(), "ledger-title"),
-                Ui.label(overview.debt().getCreditorName() + " · " + Formats.date(dueDate), "helper"));
+                Ui.label(overview.debt().getCreditorName() + " · " + Formats.date(dueDate)
+                        + (overview.debt().isLent() ? " · " + I18n.t("debt.lentBadge") : ""), "helper"));
 
         String when = days < 0 ? I18n.t("due.overdue", -days) : days == 0 ? I18n.t("due.today") : I18n.t("due.inDays", days);
         Label badge = Ui.label(when, "badge", overview.overdue() ? "danger" : "info");
-        VBox right = new VBox(4, Ui.label(Formats.money(overview.remaining()), "ledger-amount"), badge);
+        VBox right = new VBox(4, Ui.label(Formats.money(overview.remaining(), overview.debt().getCurrency()), "ledger-amount"), badge);
         right.setAlignment(Pos.CENTER_RIGHT);
 
         HBox row = new HBox(12, dot, text, Ui.hSpacer(), right);
@@ -328,7 +374,7 @@ public class DashboardView implements Page {
             VBox text = new VBox(2,
                     Ui.label(entry.debtTitle(), "ledger-title"),
                     Ui.label(Formats.date(entry.payment().getPaymentDate()), "helper"));
-            Label amount = Ui.label("+" + Formats.money(entry.payment().getAmount()), "ledger-amount", "text-success");
+            Label amount = Ui.label("+" + Formats.money(entry.payment().getAmount(), entry.currency()), "ledger-amount", "text-success");
 
             HBox row = new HBox(12, Icons.create(Icons.PAYMENT, 14), text, Ui.hSpacer(), amount);
             row.setAlignment(Pos.CENTER_LEFT);

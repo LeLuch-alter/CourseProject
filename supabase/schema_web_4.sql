@@ -1,6 +1,9 @@
 -- =====================================================================
 -- Kvit Web, part 4 (run AFTER schema_web_3.sql, re-runnable):
 -- when Telegram/e-mail reminders arrive.
+-- NOTE: schema_web_5.sql replaces several grants, policies and functions
+-- defined in the web scripts with fixed versions. Run it after the last
+-- schema_web file and again whenever you re-run this file.
 -- =====================================================================
 
 -- reminder_time  local time of day, counted in reminder_tz (the user's browser time zone)

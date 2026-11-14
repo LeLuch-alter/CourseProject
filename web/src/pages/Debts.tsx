@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Search, Pencil, Trash2, Receipt, X, FileSignature, Download, Calculator, HandCoins } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useData } from '../lib/data'
 import { useToast } from '../lib/toast'
-import { formatMoney, parseAmount } from '../lib/money'
+import { formatMoney, parseAmount, toTiyn, fromTiyn } from '../lib/money'
 import { formatDate, daysBetween, todayIso } from '../lib/dates'
 import { effectiveStatus, remainingFor, paidFor, progressFor, monthsToPayoff, paymentToMeetDeadline, type EffectiveStatus } from '../lib/calc'
 import { deleteDebt, deletePayment, syncStatus } from '../api/debts'
@@ -17,6 +17,9 @@ import { Schedule } from '../components/Schedule'
 import { ReceiptLink } from '../components/ReceiptLink'
 
 type Filter = 'ALL' | 'OWED' | 'LENT' | 'ACTIVE' | 'OVERDUE' | 'PAID' | 'CANCELLED'
+const FILTERS: Filter[] = ['ALL', 'OWED', 'LENT', 'ACTIVE', 'OVERDUE', 'PAID', 'CANCELLED']
+// A hand-edited ?f= value must not hide every debt.
+const toFilter = (v: string | null): Filter | null => (v && (FILTERS as string[]).includes(v) ? (v as Filter) : null)
 
 export function DebtsPage() {
   const { t, locale } = useI18n()
@@ -24,7 +27,7 @@ export function DebtsPage() {
   const toast = useToast()
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<Filter>((params.get('f') as Filter) || 'ALL')
+  const [filter, setFilter] = useState<Filter>(toFilter(params.get('f')) ?? 'ALL')
   const selectedId = Number(params.get('id')) || null
   const [editing, setEditing] = useState<Debt | null | undefined>(undefined)
   const [paying, setPaying] = useState<number | null>(null)
@@ -32,7 +35,7 @@ export function DebtsPage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const f = params.get('f') as Filter | null
+    const f = toFilter(params.get('f'))
     if (f) setFilter(f)
   }, [params])
 
@@ -72,7 +75,7 @@ export function DebtsPage() {
     }
   }
 
-  const filters: Filter[] = ['ALL', 'OWED', 'LENT', 'ACTIVE', 'OVERDUE', 'PAID', 'CANCELLED']
+  const filters = FILTERS
 
   return (
     <div>
@@ -167,7 +170,10 @@ export function DebtsPage() {
                             <div className="flex items-center gap-2">
                               <span className={`w-1.5 h-6 rounded-full ${d.direction === 'LENT' ? 'bg-accent2' : 'bg-accent'}`} />
                               <div>
-                                <div className="font-medium">{d.title}</div>
+                                {/* A real button so the details can be opened from the keyboard; the click bubbles to the row. */}
+                                <button type="button" className="font-medium text-left hover:text-accent" aria-pressed={selectedId === d.id}>
+                                  {d.title}
+                                </button>
                                 {d.loan_id && (
                                   <div className="text-[11px] text-faint flex items-center gap-1">
                                     <FileSignature size={11} />
@@ -238,6 +244,11 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
   const toast = useToast()
   const [perMonth, setPerMonth] = useState('')
   const [delPay, setDelPay] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Below the xl breakpoint the card is rendered under the long table; bring it into view.
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 1279px)').matches) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [debt.id])
   const st: EffectiveStatus = effectiveStatus(debt, payments)
   const rem = remainingFor(debt, payments),
     paid = paidFor(debt, payments),
@@ -251,7 +262,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
     try {
       await deletePayment(id)
       const p = payments.find((x) => x.id === id)
-      await syncStatus(debt, rem + Number(p?.amount ?? 0))
+      await syncStatus(debt, fromTiyn(toTiyn(rem) + toTiyn(p?.amount ?? 0)))
       await reload()
       toast.success(t('common.deleted'))
     } catch (e) {
@@ -262,7 +273,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
   }
 
   return (
-    <div>
+    <div ref={rootRef} className="scroll-mt-20">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs text-muted">
@@ -270,7 +281,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
           </div>
           <h2 className="text-xl truncate">{debt.title}</h2>
         </div>
-        <button className="btn-icon btn-ghost h-8 w-8" onClick={onClose}>
+        <button className="btn-icon btn-ghost h-8 w-8" onClick={onClose} aria-label={t('common.close')}>
           <X size={16} />
         </button>
       </div>
@@ -356,7 +367,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
             <input className="input h-9 num" inputMode="decimal" placeholder={t('debts.planner.perMonth')} value={perMonth} onChange={(e) => setPerMonth(e.target.value)} />
             <span className="text-sm text-muted whitespace-nowrap">{months ? t('debts.planner.months', months) : '—'}</span>
           </div>
-          {debt.due_date && days !== null && days > 0 && <div className="text-xs text-muted mt-2">{t('debts.planner.toDeadline', formatMoney(paymentToMeetDeadline(rem, debt.due_date), locale))}</div>}
+          {debt.due_date && days !== null && days > 0 && <div className="text-xs text-muted mt-2">{t('debts.planner.toDeadline', formatMoney(paymentToMeetDeadline(rem, debt.due_date), locale, debt.currency))}</div>}
         </div>
       )}
 
@@ -379,7 +390,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
                 </div>
                 {p.receipt_path && <ReceiptLink path={p.receipt_path} />}
                 {!p.mirror_of && (
-                  <button className="opacity-0 group-hover:opacity-100 text-faint hover:text-bad transition" onClick={() => setDelPay(p.id)}>
+                  <button className="sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 text-faint hover:text-bad transition" onClick={() => setDelPay(p.id)} aria-label={t('common.delete')}>
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -393,7 +404,7 @@ function Inspector({ debt, onClose, onEdit, onPay, onDelete }: { debt: Debt; onC
         onClose={() => setDelPay(null)}
         onConfirm={() => delPay && void removePayment(delPay)}
         title={t('payments.delete.title')}
-        text={t('payments.delete.text', formatMoney(payments.find((p) => p.id === delPay)?.amount ?? 0, locale), formatDate(payments.find((p) => p.id === delPay)?.payment_date, locale))}
+        text={t('payments.delete.text', formatMoney(payments.find((p) => p.id === delPay)?.amount ?? 0, locale, debt.currency), formatDate(payments.find((p) => p.id === delPay)?.payment_date, locale))}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
       />

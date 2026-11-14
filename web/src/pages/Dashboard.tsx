@@ -7,7 +7,7 @@ import { useAuth } from '../lib/auth'
 import { useData } from '../lib/data'
 import { formatMoney } from '../lib/money'
 import { formatDate, daysBetween, todayIso } from '../lib/dates'
-import { remainingFor, forecastMonths, isOverdue, effectiveStatus, debtorsOf } from '../lib/calc'
+import { remainingFor, forecastMonths, isOverdue, effectiveStatus, debtorsOf, currencyOf } from '../lib/calc'
 import { Ring, Skeleton, Empty, stagger, StatusChip, Progress } from '../components/ui'
 import { DebtForm, PaymentForm } from '../components/forms'
 
@@ -34,14 +34,14 @@ export function DashboardPage() {
   const [payOpen, setPayOpen] = useState(false)
 
   const progress = summary.total > 0 ? Math.round((summary.paid / summary.total) * 100) : 0
-  const forecast = useMemo(
-    () =>
-      forecastMonths(
-        summary.remaining,
-        payments.filter((p) => debts.find((d) => d.id === p.debt_id)?.direction === 'OWED'),
-      ),
-    [summary.remaining, payments, debts],
-  )
+  // summary.remaining is in tenge, so only payments on live tenge OWED debts count (same as on Reports).
+  const forecast = useMemo(() => {
+    const owedIds = new Set(debts.filter((d) => d.direction === 'OWED' && d.status !== 'CANCELLED' && currencyOf(d) === 'KZT').map((d) => d.id))
+    return forecastMonths(
+      summary.remaining,
+      payments.filter((p) => owedIds.has(p.debt_id)),
+    )
+  }, [summary.remaining, payments, debts])
 
   const upcoming = useMemo(
     () =>

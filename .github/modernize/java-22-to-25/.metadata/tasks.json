@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks for upgrading Kvit from Java 22 to Java 25 LTS.",
+  "tasks": [
+    {
+      "type": "upgrade",
+      "id": "001-upgrade-java-22-to-25",
+      "description": "Upgrade the Kvit JavaFX desktop application from Java 22 to Java 25 LTS while preserving existing behavior. Addresses assessment issue: Java Version Has Reached the End of Support (azure-java-version-01000).",
+      "reason": "The assessment identifies Java 22 as out of support, and the user selected Java 25 LTS as the target.",
+      "requirements": "Upgrade the application from Java 22 to Java 25 LTS. Preserve the existing Java/JavaFX desktop stack, application behavior, features, and data access. Check JavaFX 25 compatibility with Java 25 and update the JavaFX dependency/configuration only as needed. Ensure the JDK is available to local development and existing build/package workflows; align Maven compiler/toolchain settings, launch configuration, and any existing packaging/runtime configuration with Java 25. Change source code only where necessary for Java 25 compatibility. Verify the Maven build, unit tests, and desktop application startup/runtime behavior. Do not include unrelated Azure/cloud-readiness remediation or alter the web application/database.",
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "002-post-upgrade-cve-check",
+      "description": "Scan the upgraded project's dependencies for CVEs and address only relevant dependency vulnerabilities within the Java 25 upgrade scope.",
+      "reason": "Confirm the resulting dependency set does not introduce or retain an in-scope known dependency vulnerability after the runtime and compatibility updates.",
+      "requirements": "Run a dependency CVE scan after task 001 against the final dependency set. Limit changes to dependency vulnerabilities that are directly relevant to the upgraded application and can be addressed without changing the requested Java/JavaFX stack or application behavior. Do not remediate unrelated Azure/cloud-readiness findings or perform a general security audit.",
+      "dependencies": [
+        "001-upgrade-java-22-to-25"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    }
+  ],
+  "metadata": {
+    "planName": "java-22-to-25",
+    "projectName": "kvit",
+    "language": "java",
+    "createdAt": "2026-11-14T15:47:30Z",
+    "version": "1.0"
+  }
+}

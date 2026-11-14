@@ -6,7 +6,7 @@ import { useData } from '../lib/data'
 import { formatMoney } from '../lib/money'
 import { todayIso } from '../lib/dates'
 import { parseCsv, type CsvError, type CsvRow } from '../lib/csvImport'
-import { createDebt, createPayment } from '../api/debts'
+import { createDebt, createPayment, deleteDebt } from '../api/debts'
 import { Modal } from './ui'
 
 // Reads a CSV in the export format, shows a preview, and only then creates the debts.
@@ -25,9 +25,13 @@ export function CsvImport() {
       toast.error(t('csv.tooBig'))
       return
     }
-    const parsed = parseCsv(await file.text())
-    setRows(parsed.rows)
-    setErrors(parsed.errors)
+    try {
+      const parsed = parseCsv(await file.text())
+      setRows(parsed.rows)
+      setErrors(parsed.errors)
+    } catch (e) {
+      toast.error(t('common.loadFailed'), e instanceof Error ? e.message : undefined)
+    }
   }
 
   async function doImport() {
@@ -37,12 +41,22 @@ export function CsvImport() {
     try {
       for (const r of rows) {
         const d = await createDebt({ title: r.title, creditor_name: r.creditor, original_amount: r.amount, interest_rate: null, due_date: r.due, status: r.status, notes: r.notes })
-        if (r.paid > 0) await createPayment({ debt_id: d.id, amount: r.paid, payment_date: todayIso(), notes: t('csv.paidNote') })
+        if (r.paid > 0) {
+          try {
+            await createPayment({ debt_id: d.id, amount: r.paid, payment_date: todayIso(), notes: t('csv.paidNote') })
+          } catch (e) {
+            // Without its payment the balance would be wrong, so the half-imported debt is removed again.
+            await deleteDebt(d.id).catch((rollback) => console.error('Could not undo the imported debt', rollback))
+            throw e
+          }
+        }
         done++
       }
       toast.success(t('csv.done', done))
       setRows(null)
     } catch (e) {
+      // Keep only the rows that were not saved, so "Import" again does not create duplicates.
+      setRows(rows.slice(done))
       toast.error(t('csv.partial', done), e instanceof Error ? e.message : undefined)
     } finally {
       await reload()

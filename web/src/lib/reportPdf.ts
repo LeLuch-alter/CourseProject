@@ -24,7 +24,14 @@ export async function exportReportPdf({ t, locale, months, byCreditor, statuses,
   doc.setFont('NotoSans')
   const M = 20
   let y = 22
+  // A 12-month report with many creditors is longer than one A4 page; continue on a new one.
+  const ensureRoom = (needed: number) => {
+    if (y + needed <= 275) return
+    doc.addPage()
+    y = 22
+  }
   const line = (k: string, v: string, size = 11) => {
+    ensureRoom(7)
     doc.setFontSize(size)
     doc.setTextColor(110)
     doc.text(k, M, y)
@@ -33,6 +40,7 @@ export async function exportReportPdf({ t, locale, months, byCreditor, statuses,
     y += 7
   }
   const heading = (s: string) => {
+    ensureRoom(21)
     y += 4
     doc.setFontSize(13)
     doc.setTextColor(20)

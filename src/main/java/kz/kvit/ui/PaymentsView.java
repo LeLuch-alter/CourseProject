@@ -183,7 +183,9 @@ public class PaymentsView implements Page {
             @Override
             protected void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : "+" + Formats.money(item));
+                PaymentEntry entry = getTableRow() == null ? null : getTableRow().getItem();
+                setText(empty || item == null ? null
+                        : "+" + Formats.money(item, entry == null ? null : entry.currency()));
                 getStyleClass().remove("amount-cell");
                 getStyleClass().add("amount-cell");
             }
@@ -255,20 +257,25 @@ public class PaymentsView implements Page {
         updateSummary();
     }
 
+    /** Total and average are in tenge only: payments in other currencies are counted but never added up. */
     private void updateSummary() {
         BigDecimal total = BigDecimal.ZERO;
+        int tengeCount = 0;
         for (PaymentEntry entry : filtered) {
-            total = total.add(entry.payment().getAmount());
+            if (entry.isInTenge()) {
+                total = total.add(entry.payment().getAmount());
+                tengeCount++;
+            }
         }
         totalValue.setText(Formats.money(total));
         countValue.setText(String.valueOf(filtered.size()));
-        averageValue.setText(filtered.isEmpty() ? "—"
-                : Formats.money(total.divide(BigDecimal.valueOf(filtered.size()), 2, RoundingMode.HALF_UP)));
+        averageValue.setText(tengeCount == 0 ? "—"
+                : Formats.money(total.divide(BigDecimal.valueOf(tengeCount), 2, RoundingMode.HALF_UP)));
     }
 
     private void confirmDelete(PaymentEntry entry) {
         host.confirm(I18n.t("payments.delete.title"),
-                I18n.t("payments.delete.text", Formats.money(entry.payment().getAmount()),
+                I18n.t("payments.delete.text", Formats.money(entry.payment().getAmount(), entry.currency()),
                         Formats.date(entry.payment().getPaymentDate())),
                 I18n.t("common.delete"), true,
                 () -> BackgroundTask.run(() -> {
