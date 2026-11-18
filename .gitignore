@@ -83,3 +83,9 @@ web/.env
 supabase/functions/.env
 supabase/*.local.sql
 supabase/.temp/
+
+# Not part of this project: someone else's project kept for reference, and its archive
+/pp/
+/pp.zip
+# Copy of docs/KVIT_FULL_GUIDE.html in the root
+/KVIT_FULL_GUIDE.html

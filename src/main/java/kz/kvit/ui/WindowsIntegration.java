@@ -24,11 +24,12 @@ public final class WindowsIntegration {
     private static final int DWMWA_TEXT_COLOR = 36;
     private static final int SPI_GETCLIENTAREAANIMATION = 0x1042;
 
-    // Windows COLORREF is 0x00BBGGRR. Dark: #18181a / #f2f2f3, light: #f4f4f5 / #18181b.
-    private static final int DARK_CAPTION = 0x001A1818;
-    private static final int DARK_CAPTION_TEXT = 0x00F3F2F2;
-    private static final int LIGHT_CAPTION = 0x00F5F4F4;
-    private static final int LIGHT_CAPTION_TEXT = 0x001B1818;
+    // Windows COLORREF is 0x00BBGGRR. Same colors as -bg / -ink in styles.css:
+    // dark #101010 / #f3f3f3, light #f6f6f4 / #101010.
+    private static final int DARK_CAPTION = 0x00101010;
+    private static final int DARK_CAPTION_TEXT = 0x00F3F3F3;
+    private static final int LIGHT_CAPTION = 0x00F4F6F6;
+    private static final int LIGHT_CAPTION_TEXT = 0x00101010;
 
     private WindowsIntegration() {
     }

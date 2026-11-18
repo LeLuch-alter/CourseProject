@@ -53,19 +53,30 @@ export async function downloadReceiptPdf({ loan, lender, borrower, text, t, loca
   const lines = doc.splitTextToSize(text, W - 2 * M)
   doc.text(lines, M, 46)
   let y = 46 + lines.length * 6 + 10
-  const row = (k: string, v: string) => {
+  const rows: Array<[string, string]> = [
+    [t('loans.amount'), formatMoney(loan.amount, locale)],
+    [t('loans.purpose'), loan.purpose],
+    [t('loans.due'), formatDate(loan.due_date, locale)],
+    [t('loans.lender'), `${lender?.display_name ?? ''} (@${lender?.username ?? ''})`],
+    [t('loans.borrower'), `${borrower?.display_name ?? ''} (@${borrower?.username ?? ''})`],
+    [t('loans.card'), loan.borrower_card ? loan.borrower_card.replace(/(\d{4})(?=\d)/g, '$1 ') : '—'],
+  ]
+  // The value column starts after the longest label (labels differ a lot between languages,
+  // e.g. "Карта заёмщика для перевода"), but never further than 75 mm; longer labels and
+  // long values wrap onto the next line instead of running into each other.
+  const GAP = 6
+  const labelWidth = Math.min(75, Math.max(...rows.map(([k]) => doc.getTextWidth(k))))
+  const valueX = M + labelWidth + GAP
+  const LINE = 6
+  for (const [k, v] of rows) {
+    const labelLines: string[] = doc.splitTextToSize(k, labelWidth)
+    const valueLines: string[] = doc.splitTextToSize(v || '—', W - M - valueX)
     doc.setTextColor(120)
-    doc.text(k, M, y)
+    doc.text(labelLines, M, y)
     doc.setTextColor(30)
-    doc.text(v, M + 55, y)
-    y += 7
+    doc.text(valueLines, valueX, y)
+    y += Math.max(labelLines.length, valueLines.length) * LINE + 1.5
   }
-  row(t('loans.amount'), formatMoney(loan.amount, locale))
-  row(t('loans.purpose'), loan.purpose)
-  row(t('loans.due'), formatDate(loan.due_date, locale))
-  row(t('loans.lender'), `${lender?.display_name ?? ''} (@${lender?.username ?? ''})`)
-  row(t('loans.borrower'), `${borrower?.display_name ?? ''} (@${borrower?.username ?? ''})`)
-  row(t('loans.card'), loan.borrower_card ? loan.borrower_card.replace(/(\d{4})(?=\d)/g, '$1 ') : '—')
   y += 10
   doc.setDrawColor(150)
   doc.line(M, y + 12, M + 70, y + 12)

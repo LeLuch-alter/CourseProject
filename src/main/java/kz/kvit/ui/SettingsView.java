@@ -84,7 +84,7 @@ public class SettingsView implements Page {
 
     private GridPane shortcutsGrid() {
         String[][] shortcuts = {
-                {"Ctrl + 1…6", "settings.shortcut.sections"},
+                {"Ctrl + 1…7", "settings.shortcut.sections"},
                 {"Ctrl + N", "settings.shortcut.new"},
                 {"Ctrl + F", "settings.shortcut.search"},
                 {"F5", "settings.shortcut.refresh"},

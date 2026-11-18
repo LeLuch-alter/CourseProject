@@ -14,9 +14,19 @@ export function ReceiptLink({ path }: { path: string }) {
       title={t('receipt.open')}
       aria-label={t('receipt.open')}
       onClick={async () => {
+        // Browsers (Safari above all) block window.open() after an await, so the tab is
+        // opened right on the click and gets its address once the signed link is ready.
+        const tab = window.open('', '_blank')
         try {
-          window.open(await receiptUrl(path), '_blank', 'noopener')
+          const url = await receiptUrl(path)
+          if (tab) {
+            tab.opener = null
+            tab.location.href = url
+          } else {
+            window.location.href = url
+          }
         } catch (e) {
+          tab?.close()
           toast.error(t('common.loadFailed'), e instanceof Error ? e.message : undefined)
         }
       }}

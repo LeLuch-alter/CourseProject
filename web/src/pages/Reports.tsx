@@ -29,6 +29,10 @@ export function ReportsPage() {
   const thisMonth = todayIso().slice(0, 7)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [to, setTo] = useState(thisMonth)
+  // Which bar / status / creditor is under the pointer (or keyboard focus); the others are dimmed.
+  const [hoverMonth, setHoverMonth] = useState<string | null>(null)
+  const [hoverStatus, setHoverStatus] = useState<string | null>(null)
+  const [hoverCreditor, setHoverCreditor] = useState<string | null>(null)
   // custom period: whole months from..to; the chart ends on the last day of 'to'
   const span = period === 'custom' ? Math.max(1, (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5)) - Number(from.slice(5)) + 1) : Number(period)
   const endDay = period === 'custom' ? `${to}-${String(new Date(Number(to.slice(0, 4)), Number(to.slice(5)), 0).getDate()).padStart(2, '0')}` : todayIso()
@@ -109,20 +113,44 @@ export function ReportsPage() {
               {months.map((m, i) => {
                 const h = m.total > 0 ? Math.max(6, Math.round((m.total / maxMonth) * BAR_MAX)) : 2
                 const last = i === months.length - 1
+                const active = hoverMonth === m.month
+                const dimmed = hoverMonth !== null && !active
+                const monthName = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(m.month + '-01T00:00:00'))
                 return (
-                  <div key={m.month} className="flex-1 flex flex-col items-center justify-end gap-1.5">
+                  <div
+                    key={m.month}
+                    tabIndex={0}
+                    aria-label={`${monthName}: ${formatMoney(m.total, locale)}`}
+                    onMouseEnter={() => setHoverMonth(m.month)}
+                    onMouseLeave={() => setHoverMonth(null)}
+                    onFocus={() => setHoverMonth(m.month)}
+                    onBlur={() => setHoverMonth(null)}
+                    className={`relative flex-1 h-full flex flex-col items-center justify-end gap-1.5 cursor-default rounded outline-none focus-visible:ring-1 focus-visible:ring-ink/40 transition-opacity duration-200 ${dimmed ? 'opacity-40' : 'opacity-100'}`}
+                  >
+                    {active && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute z-10 pointer-events-none px-2.5 py-1.5 rounded-lg bg-ink text-bg text-xs num whitespace-nowrap shadow-lg"
+                        style={{ bottom: h + 40 }}
+                      >
+                        <div className="font-medium">{formatMoney(m.total, locale)}</div>
+                        <div className="opacity-70 capitalize">{monthName}</div>
+                      </motion.div>
+                    )}
                     {m.total > 0 && (
-                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.06 }} className="font-mono text-[10px] num text-muted whitespace-nowrap">
+                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.06 }} className={`font-mono text-[10px] num whitespace-nowrap transition-colors ${active ? 'text-ink' : 'text-muted'}`}>
                         {formatCompact(m.total, locale)}
                       </motion.div>
                     )}
                     <motion.div
                       initial={{ height: 0 }}
-                      animate={{ height: h }}
-                      transition={{ delay: i * 0.06, type: 'spring', stiffness: 120, damping: 18 }}
-                      className={`w-full max-w-[56px] rounded-t ${m.total > 0 ? (last ? 'bg-ink' : 'bg-ink/45') : 'bg-line'}`}
+                      animate={{ height: h, scaleX: active ? 1.08 : 1, y: active && m.total > 0 ? -3 : 0 }}
+                      transition={{ height: { delay: i * 0.06, type: 'spring', stiffness: 120, damping: 18 }, default: { type: 'spring', stiffness: 400, damping: 28 } }}
+                      className={`w-full max-w-[56px] rounded-t transition-colors duration-200 ${m.total > 0 ? (last || active ? 'bg-ink' : 'bg-ink/45') : 'bg-line'}`}
                     />
-                    <div className={`h-4 text-[11px] ${last ? 'text-ink' : 'text-muted'}`}>{new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(m.month + '-01T00:00:00'))}</div>
+                    <div className={`h-4 text-[11px] transition-colors ${last || active ? 'text-ink' : 'text-muted'}`}>{new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(m.month + '-01T00:00:00'))}</div>
                   </div>
                 )
               })}
@@ -136,36 +164,70 @@ export function ReportsPage() {
             <div className="text-sm text-muted">—</div>
           ) : (
             <ul className="space-y-3">
-              {byCreditor.slice(0, 8).map(([name, v]) => (
-                <li key={name}>
-                  <div className="flex justify-between gap-3 text-sm mb-1">
-                    <span className="font-medium truncate min-w-0">{name}</span>
-                    <span className="num text-muted shrink-0">
-                      {formatMoney(v, locale)} · {Math.round((v / creditorTotal) * 100)}%
-                    </span>
-                  </div>
-                  <Progress value={(v / creditorTotal) * 100} className="h-1.5" />
-                </li>
-              ))}
+              {byCreditor.slice(0, 8).map(([name, v]) => {
+                const active = hoverCreditor === name
+                const dimmed = hoverCreditor !== null && !active
+                return (
+                  <li
+                    key={name}
+                    onMouseEnter={() => setHoverCreditor(name)}
+                    onMouseLeave={() => setHoverCreditor(null)}
+                    className={`-mx-2 px-2 py-1 rounded-lg transition-all duration-200 ${active ? 'bg-raised translate-x-1' : ''} ${dimmed ? 'opacity-50' : ''}`}
+                  >
+                    <div className="flex justify-between gap-3 text-sm mb-1">
+                      <span className="font-medium truncate min-w-0">{name}</span>
+                      <span className={`num shrink-0 transition-colors ${active ? 'text-ink' : 'text-muted'}`}>
+                        {formatMoney(v, locale)} · {Math.round((v / creditorTotal) * 100)}%
+                      </span>
+                    </div>
+                    <Progress value={(v / creditorTotal) * 100} className={`transition-all duration-200 ${active ? 'h-2.5' : 'h-1.5'}`} color={active ? 'bg-ink' : 'bg-accent'} />
+                  </li>
+                )
+              })}
             </ul>
           )}
         </motion.section>
 
         <motion.section {...stagger(2)} className="card p-5">
           <h2 className="mb-4">{t('reports.statuses')}</h2>
-          <div className="flex h-3 rounded-full overflow-hidden bg-line">
-            {Object.entries(statuses).map(
-              ([k, v]) => v > 0 && <motion.div key={k} initial={{ width: 0 }} animate={{ width: `${(v / statusTotal) * 100}%` }} transition={{ duration: 0.6 }} className={colors[k]} />,
-            )}
+          <div className="flex h-4 items-center">
+            <div className="flex w-full h-3 rounded-full overflow-hidden bg-line">
+              {Object.entries(statuses).map(
+                ([k, v]) =>
+                  v > 0 && (
+                    <motion.div
+                      key={k}
+                      title={`${t(`status.${k}`)}: ${v}`}
+                      onMouseEnter={() => setHoverStatus(k)}
+                      onMouseLeave={() => setHoverStatus(null)}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(v / statusTotal) * 100}%`, opacity: hoverStatus !== null && hoverStatus !== k ? 0.3 : 1, scaleY: hoverStatus === k ? 1.35 : 1 }}
+                      transition={{ width: { duration: 0.6 }, default: { duration: 0.2 } }}
+                      className={`${colors[k]} cursor-default`}
+                    />
+                  ),
+              )}
+            </div>
           </div>
-          <ul className="grid grid-cols-2 gap-2 mt-4 text-sm">
-            {Object.entries(statuses).map(([k, v]) => (
-              <li key={k} className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${colors[k]}`} />
-                {t(`status.${k}`)}
-                <span className="ml-auto num ">{v}</span>
-              </li>
-            ))}
+          <ul className="grid grid-cols-2 gap-1 mt-3 text-sm">
+            {Object.entries(statuses).map(([k, v]) => {
+              const active = hoverStatus === k
+              return (
+                <li
+                  key={k}
+                  onMouseEnter={() => setHoverStatus(k)}
+                  onMouseLeave={() => setHoverStatus(null)}
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all duration-200 ${active ? 'bg-raised' : ''} ${hoverStatus !== null && !active ? 'opacity-50' : ''}`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full transition-transform duration-200 ${colors[k]} ${active ? 'scale-150' : ''}`} />
+                  {t(`status.${k}`)}
+                  <span className="ml-auto num">
+                    {v}
+                    {active && statusTotal > 0 && <span className="text-muted"> · {Math.round((v / statusTotal) * 100)}%</span>}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         </motion.section>
 
